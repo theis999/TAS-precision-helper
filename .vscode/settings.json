@@ -1,0 +1,26 @@
+{
+    "factorio.versions": [
+        {
+            "name": "System",
+            "factorioPath": "C:\\Program Files\\Factorio\\bin\\x64\\factorio.exe",
+            "docsPath": "..\\..\\..\\..\\..\\Users\\theis\\OneDrive\\Skrivebord\\Factorio_1.1.68\\doc-html\\runtime-api.json",
+            "active": true
+        }
+    ],
+    "Lua.diagnostics.globals": [
+        "mods",
+        "table_size",
+        "log",
+        "localised_print",
+        "serpent",
+        "global",
+        "__DebugAdapter",
+        "__Profiler"
+    ],
+    "Lua.runtime.version": "Lua 5.2",
+    "Lua.workspace.library": [
+        "c:\\Program Files\\Factorio\\data",
+        "c:\\Program Files\\Factorio\\data\\core\\lualib",
+        ".vscode/factorio"
+    ]
+}
