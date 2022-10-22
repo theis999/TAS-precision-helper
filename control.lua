@@ -7,18 +7,29 @@ local player
 local steps = {}
 local step_list = {}
 
+---@diagnostic disable: assign-type-mismatch
+---@type boolean
 local reach = settings.global["tas-reach"].value
+---@type boolean
 local reachable = settings.global["tas-reachable"].value
+---@type boolean
 local burn = settings.global["tas-burn"].value
+---@type boolean
 local craft = settings.global["tas-craft"].value
+---@type uint
 local reachable_range = settings.global["tas-reachable-range"].value
+---@type uint
+local skip = settings.global["tas-skip-tick"].value
+---@type boolean
 local craftable = settings.global["tas-reachable-range"].value
+---@type boolean
 local output = settings.global["tas-reachable-range"].value
+---@diagnostic enable: assign-type-mismatch
 
-local function draw_reach()
+---Draws two circles indication your range
+local function draw_reachable_range()
     if not reach then return end
     if id == 0 then
-        player.print("rendering")
         id = rendering.draw_circle{
             color = {r=0.5,a=0.5},
             width = 2,
@@ -31,7 +42,6 @@ local function draw_reach()
     end
 
     if id2 == 0 then
-        player.print("rendering")
         id2 = rendering.draw_circle{
             color = {r=0.2, g=0.5,a=0.5},
             width = 2,
@@ -44,10 +54,11 @@ local function draw_reach()
     end
 end
 
-local function draw_reachable()
+---draws bounding boxes on entities in range
+local function draw_reachable_entities()
     if not reachable then return end
     local entities = player.surface.find_entities_filtered{
-        position = player.position, 
+        position = player.position,
         radius = player.reach_distance+reachable_range,
         force = player.force
     }
@@ -67,12 +78,12 @@ local function draw_reachable()
 
     entities = player.surface.find_entities_filtered{
         position = player.position,
-        radius = player.resource_reach_distance +1,
+        radius = player.resource_reach_distance+reachable_range,
         ---@diagnostic disable-next-line:undefined-global
         force = none
     }
     for i in pairs(entities) do
-        if entities[i] ~= player.character and player.can_reach_entity(entities[i]) then 
+        if entities[i] ~= player.character and player.can_reach_entity(entities[i]) then
             rendering.draw_rectangle{
                 color = {g=1, a=0.5},
                 width = 1,
@@ -80,13 +91,14 @@ local function draw_reachable()
                 left_top = entities[i].bounding_box.left_top,
                 right_bottom = entities[i].bounding_box.right_bottom,
                 surface = player.surface,
-                time_to_live = skip +1,
-                draw_on_ground = true               
+                time_to_live = skip + 1,
+                draw_on_ground = true
             }
         end
     end
 end
 
+---Draws crafting time left in ticks, of the current craft, for a furnace or assembler
 ---@param entity LuaEntity
 local function draw_craft(entity)
     if not craft then return end
@@ -96,7 +108,7 @@ local function draw_craft(entity)
             local ticks_left = math.ceil(60*(1-entity.crafting_progress)*(rec.energy/entity.crafting_speed))
             if not entity.is_crafting() then ticks_left = 0 end
             rendering.draw_text{
-                text = ticks_left .. "t",
+                text = ticks_left,
                 surface = entity.surface,
                 target = entity.bounding_box.left_top,
                 color = {1,1,1,1},
@@ -106,130 +118,130 @@ local function draw_craft(entity)
     end
 end
 
+---Draws fuel remaining in seconds on a burner entity (furnace, boiler, burner inserter etc.)
 ---@param entity LuaEntity
 local function draw_burn(entity)
     if not burn then return end
     local fuel
     local fuel_remain = 0
-    if  entity.burner ~= nil then
-        fuel = entity.get_fuel_inventory()
-        if  fuel ~= nil then
+    if  entity.burner == nil then return end
+    fuel = entity.get_fuel_inventory()
+    if  fuel == nil then return end
 
-            local inv = fuel.get_contents()
-            for stack, count in pairs(inv) do
-                local stack_ent = game.item_prototypes[stack]
-                fuel_remain = fuel_remain + stack_ent.fuel_value * count
-            end
-
-            local burner_time
-            if entity.prototype.energy_usage == nil then
-                burner_time = math.floor((entity.burner.remaining_burning_fuel + fuel_remain) / entity.prototype.max_energy_usage / 60)
-            else
-                burner_time = math.floor((entity.burner.remaining_burning_fuel + fuel_remain) / entity.prototype.energy_usage / 60)
-            end
-
-            rendering.draw_text{
-                text = burner_time .. "s",
-                surface = entity.surface,
-                target = {entity.bounding_box.left_top.x, entity.bounding_box.right_bottom.y - 0.5},
-                color = {1,1,1,1},
-                time_to_live=skip+1
-            }
-        end
+    local inv = fuel.get_contents()
+    for stack, count in pairs(inv) do
+        local stack_ent = game.item_prototypes[stack]
+        fuel_remain = fuel_remain + stack_ent.fuel_value * count
     end
+
+    local burner_time
+    if entity.prototype.energy_usage == nil then
+        burner_time = math.floor((entity.burner.remaining_burning_fuel + fuel_remain) / entity.prototype.max_energy_usage / 60)
+    else
+        burner_time = math.floor((entity.burner.remaining_burning_fuel + fuel_remain) / entity.prototype.energy_usage / 60)
+    end
+
+    rendering.draw_text{
+        text = burner_time .. "s",
+        surface = entity.surface,
+        target = {entity.bounding_box.left_top.x, entity.bounding_box.right_bottom.y - 0.5},
+        color = {1,1,1,1},
+        time_to_live=skip+1
+    }
 end
 
+---Draws the time an assembler will craft with the current input and the number of craftable items an assembler will produce before it runs out of resources
 ---@param entity LuaEntity
 local function draw_craftable(entity)
     if not craftable then return end
     local inv = entity.get_inventory(defines.inventory.assembling_machine_input)
-    if inv ~= nil and entity.type == "assembling-machine" then
-        local rec = entity.get_recipe()
-        if rec ~= nil then
-            local count = 999
-            local content = inv.get_contents()
-            for i = 1, #rec.ingredients do
-                if content[rec.ingredients[i].name] then
-                    count = math.min(count, math.floor(content[rec.ingredients[i].name] / rec.ingredients[i].amount))
-                else
-                    count = 0
-                end
-            end
-            local time
-            if entity.crafting_progress == 0 then
-                time = count * rec.energy / entity.crafting_speed
-            else
-                time = (1-entity.crafting_progress + count) * rec.energy / entity.crafting_speed
-            end
-            local text
-            if time < 1 then text = math.floor(time*60) .. "t" else text = math.floor(time) .. "s" end
-
-            rendering.draw_text{
-                text = text,
-                surface = entity.surface,
-                target = {entity.bounding_box.left_top.x, entity.bounding_box.right_bottom.y -0.5},
-                color = {1,1,1,1},
-                time_to_live=skip+1
-            }
-
-            local color = {1,0,0,1}
-            if entity.is_crafting() then
-                count = count + 1
-                color = {1,1,1,1} --shift color to white if crafting
-            end
-
-            rendering.draw_text{
-                text = count,
-                surface = entity.surface,
-                target = {entity.bounding_box.right_bottom.x - 0.5, entity.bounding_box.left_top.y},
-                color = color,
-                time_to_live=skip+1
-            }
+    if inv == nil or entity.type ~= "assembling-machine" then return end
+    local rec = entity.get_recipe()
+    if rec == nil then return end
+    local count = 999
+    local content = inv.get_contents()
+    for i = 1, #rec.ingredients do
+        if content[rec.ingredients[i].name] then
+            count = math.min(count, math.floor(content[rec.ingredients[i].name] / rec.ingredients[i].amount))
+        else
+            count = 0
         end
     end
+
+    local time
+    if entity.crafting_progress == 0 then
+        time = count * rec.energy / entity.crafting_speed
+    else
+        time = (1-entity.crafting_progress + count) * rec.energy / entity.crafting_speed
+    end
+    local text
+    if time < 1 then text = math.floor(time*60) .. "t" else text = math.floor(time) .. "s" end --if less than 1 second
+
+    rendering.draw_text{
+        text = text,
+        surface = entity.surface,
+        target = {entity.bounding_box.left_top.x, entity.bounding_box.right_bottom.y -0.5}, --left bottom
+        color = {1,1,1,1},
+        time_to_live=skip+1
+    }
+
+    local color = {1,0,0,1} --red
+    if entity.is_crafting() then
+        count = count + 1
+        color = {1,1,1,1} --shift color to white if crafting
+    end
+
+    rendering.draw_text{
+        text = count,
+        surface = entity.surface,
+        target = {entity.bounding_box.right_bottom.x - 0.5, entity.bounding_box.left_top.y}, --right top
+        color = color,
+        time_to_live=skip+1
+    }
 end
 
----  @param entity LuaEntity
+---Draws the time left an lab can work and the number of cycles it has left
+---@param entity LuaEntity
 local function draw_lab(entity)
     if not craftable then return end
     local inv = entity.get_inventory(defines.inventory.lab_input)
     local research = player.force.current_research
-    if inv ~= nil and research ~= nil  and entity.type == "lab" then
-        local ing = research.research_unit_ingredients
-        local content = inv.get_contents()
-        local count = 999.9
-        for i = 1, #ing do
-            if content[ing[i].name] then
-                local stack = inv.find_item_stack(ing[i].name)
-                if stack then count = math.min(count, (content[ing[i].name] -1 + stack.durability) / ing[i].amount)
-                else count = 0 end
-            else
-                count = 0
-            end
+    if inv == nil or research == nil or entity.type ~= "lab" then return end
+    local ing = research.research_unit_ingredients
+    local content = inv.get_contents()
+    local count = 999.9
+    for i = 1, #ing do
+        if content[ing[i].name] then
+            local stack = inv.find_item_stack(ing[i].name)
+            if stack then count = math.min(count, (content[ing[i].name] -1 + stack.durability) / ing[i].amount)
+            else count = 0 end
+        else
+            count = 0
         end
-
-        local time = count * research.research_unit_energy / entity.prototype.researching_speed
-        local text
-        if time < 61 then text = math.floor(time) .. "t" else text = math.floor(time/60) .. "s" end
-
-        rendering.draw_text{
-            text = text,
-            surface = entity.surface,
-            target = {entity.bounding_box.left_top.x, entity.bounding_box.right_bottom.y -0.5},
-            color = {1,1,0,1},
-            time_to_live=skip+1
-        }
-
-        rendering.draw_text{
-            text = string.format("%.2f",count),
-            surface = entity.surface,
-            target = {entity.bounding_box.right_bottom.x - 0.85, entity.bounding_box.left_top.y},
-            color = {1,1,1,1},
-            time_to_live=skip+1
-        }
     end
+
+    local time = count * research.research_unit_energy / entity.prototype.researching_speed
+    local text
+    if time < 61 then text = math.floor(time) .. "t" else text = math.floor(time/60) .. "s" end
+
+    rendering.draw_text{
+        text = text,
+        surface = entity.surface,
+        target = {entity.bounding_box.left_top.x, entity.bounding_box.right_bottom.y -0.5}, --left bottom
+        color = {1,1,0,1},
+        time_to_live=skip+1
+    }
+
+    rendering.draw_text{
+        text = string.format("%.2f",count),
+        surface = entity.surface,
+        target = {entity.bounding_box.right_bottom.x - 0.85, entity.bounding_box.left_top.y}, --right top
+        color = {1,1,1,1},
+        time_to_live=skip+1
+    }
 end
 
+---Draws the number of items ready for pick up
 ---@param entity LuaEntity
 local function draw_output(entity)
     if not output then return end
@@ -238,40 +250,32 @@ local function draw_output(entity)
     if t == "assembling-machine" then
         local inv = entity.get_inventory(defines.inventory.assembling_machine_output)
         if inv and #inv > 0 then
-            count = inv[1].count
-        end--just take the first stack, whatever
-    end
-    if t == "furnace" then
+            count = inv[1].count--just take the first stack, whatever
+        end
+    elseif t == "furnace" then
         local inv = entity.get_inventory(defines.inventory.furnace_result)
-        if inv then count = inv[1].count else count = 0 end --just take the first stack, whatever
-    end
-    if t == "container" then
+        if inv and #inv > 0 then count = inv[1].count else count = 0 end --just take the first stack, whatever
+    elseif t == "container" then
         local contents = entity.get_inventory(defines.inventory.chest).get_contents()
         count = 0
         for k,v in pairs(contents) do
             count = count + v
         end
-    end
+    end --unhandled defines.inventory.rocket_silo_output
 
     if count > 0 then
         rendering.draw_text{
             text = count,
             surface = entity.surface,
-            target = {entity.bounding_box.right_bottom.x - 0.5, entity.bounding_box.right_bottom.y - 0.5},
+            target = {entity.bounding_box.right_bottom.x - 0.5, entity.bounding_box.right_bottom.y - 0.5}, --right bottom
             color = {1,1,1,1},
             time_to_live=skip+1
         }
     end
 end
 
---old, based on thue's playtime
-local function draw_position()
-    local p = player.character.position
-    if player.gui.top.positionGUI == nil then player.gui.top.add{type="button", name="positionGUI"} end
-    player.gui.top.positionGUI.caption="[".. p.x .. " , " .. p.y .. "]"
-end
-
----@param player_index number
+---Creates the GUI for a player
+---@param player_index uint
 local function build_gui(player_index)
     local player = game.players[player_index]
     local screen = player.gui.screen
@@ -309,75 +313,58 @@ local function build_gui(player_index)
         }
     end
 
-    -- position
-    do
+    do --position
         local flow = main_table.add{ type = "flow", direction = "vertical" }
-        -- flow.add{ type = "label", style = "caption_label", caption = {"gui-map-editor-time-editor.speed"}, }
         flow.add{ type = "label", style = "caption_label", caption = "Position", }
         local display_flow = flow.add{ type = "flow", direction = "horizontal" }
-        --display_flow.add{ type = "label", caption = {"", {"gui-map-editor-time-editor.current-speed"}, ":"}, }
         display_flow.add{ type = "empty-widget", style = "game_speed_horizontal_space", }
         refs.current_position = display_flow.add{ type = "label", caption = "[0 , 0]" }
     end
 
-    --teleport
-    do
+    do --teleport
         local flow = main_table.add{ type = "flow", direction = "vertical" }
         refs.teleport_flow = flow
-        
         local display_flow = flow.add{ type = "flow", direction = "horizontal" }
         display_flow.add{ type = "label", style = "caption_label", caption = {"t-tas-helper.teleport"}, }
-        
-        --display_flow.add{ type = "label", caption = {"", {"game-speed.current-time"}, ":"}, }
         display_flow.add{ type = "empty-widget", style = "game_speed_horizontal_space", }
-        
         local controls_flow = flow.add{ type = "flow", style = "game_speed_control_flow", direction = "horizontal", }
         refs.teleport_controls_flow = controls_flow
         controls_flow.add{ type = "empty-widget", style = "game_speed_horizontal_space", }
-        --controls_flow.add{ type = "label", caption = "H, M, S, tick:" }
         refs.x_textfield = controls_flow.add(make_textfield_spec("game_speed_number_textfield", player.position.x))
-        --controls_flow.add{ type = "label", caption = "," }
         refs.y_textfield = controls_flow.add(make_textfield_spec("game_speed_number_textfield", player.position.y))
 
         refs.teleport_button = controls_flow.add{ type = "button", style = "tool_button", caption = "go", }
     end
 
-    --tasklist
-    do
-        local flow = main_table.add{ type = "flow", direction = "vertical" }
-        --refs.teleport_flow = flow
-        
+    do --tasklist
+        local flow = main_table.add{ type = "flow", direction = "vertical" }        
         local display_flow = flow.add{ type = "flow", direction = "horizontal" }
         display_flow.add{ type = "label", style = "caption_label", caption = {"t-tas-helper.step-list"}, }
-        
-        --display_flow.add{ type = "label", caption = {"", {"game-speed.current-time"}, ":"}, }
         display_flow.add{ type = "empty-widget", style = "game_speed_horizontal_space", }
-        
         refs.tasks = flow.add{type = "list-box", style = "t-tas-helper-tasks", items = steps}
-        
-
     end
 end
 
----@param player_index number
+---@param player_index uint
 local function do_update(player_index)
     local refs = global.player_info[player_index].refs
     local p = game.players[player_index].position
     refs.current_position.caption = string.format("[ %.2f, %.2f ]", p.x, p.y)
 end
 
----@param player_index number?
+---@param player_index uint?
 local function update_gui_internal(player_index)
     if global.player_info == nil then global.player_info = {} end
     if player_index then
         do_update(player_index)
     else
-        for player_index, player_info in pairs(global.player_info) do
-            do_update(player_index)
+        for player_index_, __ in pairs(global.player_info) do
+            do_update(player_index_)
         end
     end
 end
 
+---@param player_index uint?
 local function update_gui(player_index)
     update_gui_internal(player_index)
 end
@@ -400,8 +387,8 @@ local function toggle_gui(event)
     --options_frame.visible = false
 
     -- toggle shortcut
-    local player = game.players[player_index]
-    player.set_shortcut_toggled("t-tas-helper-toggle-gui", frame.visible)
+    local player_ = game.players[player_index]
+    player_.set_shortcut_toggled("t-tas-helper-toggle-gui", frame.visible)
 end
 
 --@param event EventData
@@ -415,7 +402,6 @@ end
 
 ---@param player_index number
 local function destroy_gui(player_index)
-    -- don't actually have to destroy the gui, but do need to remove the references in global
     if global
     and global.player_info
     and #global.player_info > 0
@@ -424,7 +410,12 @@ local function destroy_gui(player_index)
     then
         global.player_info[player_index].refs.main_frame.destroy()
     end
-    global.player_info[player_index] = nil
+    if global
+    and global.player_info 
+    and global.player_info[player_index]
+    then
+        global.player_info[player_index] = nil
+    end
 end
 
 ---@param n number
@@ -434,7 +425,7 @@ local function amount(n)
     else return tostring(n) end
 end
 
----comment converts one entry in steps_ into a string for tasklist -> [task-number]: Taskname taskdetail
+---Converts one entry in steps_ into a string for tasklist -> [task-number]: Taskname taskdetail
 ---@param i number
 ---@param steps table
 ---@return string step_line
@@ -443,6 +434,7 @@ local function step_to_string(i, steps)
     if not step then return "" end
     local n = step[2]
     if not n then return "" end
+
     local extra = ""
     if n == "walk" then
         extra = string.format("to [%.1f,%.1f]", step[3][1], step[3][2])
@@ -481,6 +473,30 @@ local function step_to_string(i, steps)
     return string.format("[%d]: %s %s", step[1][1], n:gsub("^%l", string.upper), extra)
 end
 
+local function setup_tasklist()
+    if remote.interfaces["DunRaider-TAS"] then
+        --setup task list
+        step_list = remote.call("DunRaider-TAS", "get_task_list")
+        if not step_list then return end
+        for i = 1, #step_list do
+            steps[i] = step_to_string(i, step_list)
+        end
+        --setup event to fire on step change
+        script.on_event(
+            remote.call("DunRaider-TAS", "get_tas_step_change_id"),
+            function (data)
+                --player.print(steps[data.step])
+                for player_index, _ in pairs(game.players) do
+                    ---@cast player_index uint
+                    local tasks = global.player_info[player_index].refs.tasks
+                    tasks.scroll_to_item(data.step, "top-third")
+                    tasks.selected_index = data.step
+                end
+            end
+        )
+    end
+end
+
 script.on_init(function ()
     -- initialise speed to existing game speed
     --global.current_speed = game.speed
@@ -490,38 +506,21 @@ script.on_init(function ()
 
     -- build gui for all existing players
     for player_index, _ in pairs(game.players) do
-        ---@cast player_index number
+        ---@cast player_index uint
         build_gui(player_index)
     end
 
-    if remote.interfaces["DunRaider-TAS"] then
-        --setup task list
-        step_list = remote.call("DunRaider-TAS", "get_task_list")
-        for i = 1, #step_list do
-            steps[i] = step_to_string(i, step_list)
-            --global.player_info[1].refs.tasks.items[i] = steps[i]
-        end
-        --setup event to fire on step change
-        script.on_event(
-            remote.call("DunRaider-TAS", "get_tas_step_change_id"),
-            function (data)
-                --player.print(steps[data.step])
-                for player_index, _ in pairs(game.players) do
-                    ---@cast player_index number
-                    local tasks = global.player_info[player_index].refs.tasks
-                    tasks.scroll_to_item(data.step, "top-third")
-                    tasks.selected_index = data.step
-                end
-            end
-        )
-    end
+    --The tas generated mod changes name so we just have to test if it is there
+    setup_tasklist()
 end)
+
+script.on_load(setup_tasklist)
 
 script.on_event(defines.events.on_player_created, function(event)
     build_gui(event.player_index)
 end)
 
-script.on_event(defines.events.on_player_removed, function(event)
+script.on_event(defines.events.on_pre_player_removed, function(event)
     pcall(destroy_gui,event.player_index)
 end)
 
@@ -581,9 +580,10 @@ end
 local function collision()
 	local data = ""
 
-	for key, value in pairs(game.entity_prototypes) do
+	for key, value in pairs(game.entity_prototypes ) do
 		local x = value.collision_box.right_bottom.x - value.collision_box.left_top.x
 		local y = value.collision_box.right_bottom.y - value.collision_box.left_top.y
+        
 		local n = format_name(value.name)
 		local s = string.format(
         [[{ "%s" , {%ff, %ff} },
@@ -610,26 +610,28 @@ local function collision()
 end
 
 local function recipe()
+   
 	local data = ""
 
 	for key, value in pairs(game.recipe_prototypes) do
 		local i = value.ingredients
         local ingredients =""
-        for v in pairs(i) do 
+        for v in pairs(i) do
             local ingredient = i[v]
-            ingredients = ingredients..string.format([["%s", "%d" ]],format_name(ingredient.name), ingredient.amount)
+            ingredients = ingredients..", "..string.format([["%s", "%d" ]],format_name(ingredient.name), ingredient.amount)
         end
         --ingredients = ingredients.."}"
 		local n = format_name(key)
 		local s = string.format(
-        [[{ "%s" , {%s }},
+        [[{ "%s", {%s }},
         ]]
-		, n , ingredients)
+		, n , ingredients.sub(ingredients, 2))
 		--if x > 0.1 and y > 0.1 then
 			data = data .. s
 		--end
 	end
 	game.write_file("recipe.txt", data )
+    player.print("Writing recipe.txt")
 end
 
 --console events
@@ -644,19 +646,17 @@ end)
 
 script.on_event(defines.events.on_tick, function(event)
     if event.tick % skip ~= 0 then return end
+    if game.speed > 2.01 then return end
 
     if game.players == nil then return end
     player = game.players[1]
     if player == nil or player.character == nil then return end
 
-    --if true then return end --early end for performance
-
-    draw_reach()
-    draw_reachable()
-    --draw_position() --removed
-
     update_gui_for_all_players()
-
+    --if true then return end --early end for performance
+    draw_reachable_range()
+    draw_reachable_entities()
+    if not (burn or craft or craftable or output) then return end
     local entities = player.surface.find_entities_filtered{
         position = player.position,
         radius = player.reach_distance+reachable_range,
@@ -712,16 +712,23 @@ end)
 script.on_event("t-tas-helper-toggle-gui", toggle_gui)
 
 script.on_configuration_changed(function (param1)
-    if not global.player_info then global.player_info = {} end
+    local pi = true
+    if global and not global.player_info then
+        global.player_info = {}
+        pi = false
+    end
 
     -- build gui for all existing players
     for player_index, _ in pairs(game.players) do
-        ---@cast player_index number
-        if player_index then
+        ---@cast player_index uint
+        if player_index and pi then
             pcall(destroy_gui,player_index) --protected calling
+            build_gui(player_index)
+        elseif player_index then
             build_gui(player_index)
         end
     end
+    setup_tasklist()
 end)
 
 script.on_event(defines.events.on_gui_click, function(event)
@@ -760,9 +767,7 @@ local function direction_to_string(i)
     end
 end
 
-local select_task_id
-
----comment
+---converts a step into a printable sting
 local function step_to_print(step)
     local n = step[2]
     local extra = ""
@@ -816,11 +821,6 @@ local function select_task(event)
     player_.print(string.format("step: %d, %s", element_.selected_index, step_to_print(step)))
 
     local type = step[2]
-
-    if select_task_id then
-        rendering.destroy(select_task_id)
-    end
-
     if type == "walk" or type == "build" or type == "take" or type == "put" or type == "pick" then
         if player_.character and player_.character.surface then
         player_.character.surface.create_entity{
