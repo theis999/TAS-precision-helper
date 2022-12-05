@@ -481,6 +481,9 @@ local function setup_tasklist()
         for i = 1, #step_list do
             steps[i] = step_to_string(i, step_list)
         end
+        for player_info, _ in pairs(global.player_info) do
+            global.player_info[player_info].refs.tasks.items = steps
+        end
         --setup event to fire on step change
         script.on_event(
             remote.call("DunRaider-TAS", "get_tas_step_change_id"),
@@ -494,6 +497,38 @@ local function setup_tasklist()
                 end
             end
         )
+    end
+end
+
+local function change_setting(setting)
+    if (setting == "tas-reach") then
+        reach = settings.global["tas-reach"].value
+        if id ~= 0 then
+            rendering.destroy(id)
+            id = 0
+        end
+        if id2 ~= 0 then
+            rendering.destroy(id2)
+            id2 = 0
+        end
+    end
+    if (setting == "tas-reachable") then
+        reachable = settings.global["tas-reachable"].value
+    end
+    if (setting == "tas-burn") then
+        burn = settings.global["tas-burn"].value
+    end
+    if (setting == "tas-craft") then
+        craft = settings.global["tas-craft"].value
+    end
+    if (setting == "tas-craftable") then
+        craftable = settings.global["tas-craftable"].value
+    end
+    if (setting == "tas-output") then
+        output = settings.global["tas-output"].value
+    end
+    if (setting == "tas-reachable-range") then
+        reachable_range = settings.global["tas-reachable-range"].value
     end
 end
 
@@ -512,9 +547,19 @@ script.on_init(function ()
 
     --The tas generated mod changes name so we just have to test if it is there
     setup_tasklist()
+    
 end)
 
-script.on_load(setup_tasklist)
+script.on_load(function ()
+    setup_tasklist()
+    reach = settings.global["tas-reach"].value
+    reachable = settings.global["tas-reachable"].value
+    burn = settings.global["tas-burn"].value
+    craft = settings.global["tas-craft"].value
+    craftable = settings.global["tas-craftable"].value
+    output = settings.global["tas-output"].value
+    reachable_range = settings.global["tas-reachable-range"].value
+end)
 
 script.on_event(defines.events.on_player_created, function(event)
     build_gui(event.player_index)
@@ -677,36 +722,7 @@ end)
 
 script.on_event(defines.events.on_runtime_mod_setting_changed , function(event)
     local setting = event.setting
-    --player.print(setting)
-    if (setting == "tas-reach") then
-        reach = settings.global["tas-reach"].value
-        if id ~= 0 then
-            rendering.destroy(id)
-            id = 0
-        end
-        if id2 ~= 0 then
-            rendering.destroy(id2)
-            id2 = 0
-        end
-    end
-    if (setting == "tas-reachable") then
-        reachable = settings.global["tas-reachable"].value
-    end
-    if (setting == "tas-burn") then
-        burn = settings.global["tas-burn"].value
-    end
-    if (setting == "tas-craft") then
-        craft = settings.global["tas-craft"].value
-    end
-    if (setting == "tas-craftable") then
-        craftable = settings.global["tas-craftable"].value
-    end
-    if (setting == "tas-output") then
-        output = settings.global["tas-output"].value
-    end
-    if (setting == "tas-reachable-range") then
-        reachable_range = settings.global["tas-reachable-range"].value
-    end
+    change_setting(setting)
 end)
 
 script.on_event("t-tas-helper-toggle-gui", toggle_gui)
