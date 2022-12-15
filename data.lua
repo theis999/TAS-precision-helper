@@ -51,7 +51,7 @@ data:extend({
     {
         type = "sprite",
         name = "game_speed_settings_icon_black",
-        filename = "__game-speed__/graphics/settings-icons.png",
+        filename = "__Theis_tas_helper__/graphics/settings-icons.png",
         position = { 0, 0 },
         size = 32,
         flags = { "icon" },
@@ -59,7 +59,7 @@ data:extend({
     {
         type = "sprite",
         name = "game_speed_settings_icon_white",
-        filename = "__game-speed__/graphics/settings-icons.png",
+        filename = "__Theis_tas_helper__/graphics/settings-icons.png",
         position = { 32, 0 },
         size = 32,
         flags = { "icon" },
@@ -67,7 +67,7 @@ data:extend({
     {
         type = "sprite",
         name = "game_speed_play_until",
-        filename = "__game-speed__/graphics/play-until.png",
+        filename = "__Theis_tas_helper__/graphics/play-until.png",
         priority = "medium",
         width = 32,
         height = 32,
@@ -78,7 +78,7 @@ data:extend({
     {
         type = "sprite",
         name = "game_speed_play_until_disabled",
-        filename = "__game-speed__/graphics/play-until-disabled.png",
+        filename = "__Theis_tas_helper__/graphics/play-until-disabled.png",
         priority = "medium",
         width = 32,
         height = 32,
