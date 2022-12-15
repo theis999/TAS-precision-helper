@@ -439,7 +439,7 @@ local function step_to_string(i, steps)
     if n == "walk" then
         extra = string.format("to [%.1f,%.1f]", step[3][1], step[3][2])
     elseif n == "pick" then
-        extra = string.format("at [%.1f,%.1f]", step[3][1], step[3][2])
+        extra = "" -- string.format("at [%.1f,%.1f]", step[3][1], step[3][2])
     elseif n == "put" or n == "take" then
         extra = string.format("%s [item=%s]", amount(step[5]), step[4])
     elseif n == "craft" then
@@ -791,7 +791,7 @@ local function step_to_print(step)
         extra = string.format("to [gps=%f,%f]", step[3][1], step[3][2])
     elseif n == "pick" then
         n = "pick up"
-        extra = string.format("at [gps=%f,%f]", step[3][1], step[3][2])
+        --extra = string.format("at [gps=%f,%f]", step[3][1], step[3][2])
     elseif n == "put" or n == "take" then
         extra = string.format("%s [item=%s] in [gps=%d,%d] %s", amount(step[5]), step[4], step[3][1], step[3][2], defines_to_string(step[6]))
     elseif n == "craft" then
@@ -837,7 +837,7 @@ local function select_task(event)
     player_.print(string.format("step: %d, %s", element_.selected_index, step_to_print(step)))
 
     local type = step[2]
-    if type == "walk" or type == "build" or type == "take" or type == "put" or type == "pick" then
+    if type == "walk" or type == "build" or type == "take" or type == "put" then
         if player_.character and player_.character.surface then
         player_.character.surface.create_entity{
             name = "flare",
