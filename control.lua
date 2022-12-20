@@ -6,6 +6,7 @@ local skip = 1
 local player
 local steps = {}
 local step_list = {}
+local speed = 1
 
 ---@diagnostic disable: assign-type-mismatch
 ---@type boolean
@@ -21,10 +22,14 @@ local reachable_range = settings.global["tas-reachable-range"].value
 ---@type uint
 local skip = settings.global["tas-skip-tick"].value
 ---@type boolean
-local craftable = settings.global["tas-reachable-range"].value
+local craftable = settings.global["tas-craftable"].value
 ---@type boolean
-local output = settings.global["tas-reachable-range"].value
+local output = settings.global["tas-output"].value
 ---@diagnostic enable: assign-type-mismatch
+
+local function update_game_speed()
+    if game then speed = game.speed end
+end
 
 ---Draws two circles indication your range
 local function draw_reachable_range()
@@ -370,7 +375,9 @@ local function update_gui(player_index)
 end
 
 local function update_gui_for_all_players()
-    update_gui_internal()
+    if speed < 1.4 then
+        update_gui_internal()
+    end
 end
 
 --@param event EventData
@@ -381,10 +388,6 @@ local function toggle_gui(event)
 
     frame.visible = not frame.visible
     frame.bring_to_front()
-
-    -- close options frame
-    --local options_frame = refs.options_frame
-    --options_frame.visible = false
 
     -- toggle shortcut
     local player_ = game.players[player_index]
@@ -533,9 +536,6 @@ local function change_setting(setting)
 end
 
 script.on_init(function ()
-    -- initialise speed to existing game speed
-    --global.current_speed = game.speed
-
     -- initialise player_info table
     global.player_info = {}
 
@@ -547,7 +547,6 @@ script.on_init(function ()
 
     --The tas generated mod changes name so we just have to test if it is there
     setup_tasklist()
-    
 end)
 
 script.on_load(function ()
@@ -569,136 +568,20 @@ script.on_event(defines.events.on_pre_player_removed, function(event)
     pcall(destroy_gui,event.player_index)
 end)
 
---pathing
---[[ 
-script.on_event(defines.events.on_selected_entity_changed, function(event)
-    
-    local ent = player.selected
-    if ent == nil then return end
-    --player.print("entity selected " .. ent.name)
-    player.surface.request_path{
-        bounding_box = player.character.bounding_box,
-        collision_mask = {"player-layer", "consider-tile-transitions"},
-        start = player.position,
-        goal = ent.position,
-        force = player.force
-        --,path_resolution_modifier = -1
-    }
-    
-end)
-
-script.on_event(defines.events.on_script_path_request_finished, function(event)
-    
-    if event.try_again_later
-    then
-        player.print("path finished with try again")
-    end
-    if event.path == nil then return end
-    --player.print("path finished with " .. #event.path .. " path points")
-
-    local path = "Path: "
-    for i in pairs(event.path) do
-        path = path .. 
-            "[".. event.path[i].position.x .. ", " .. event.path[i].position.y .. "]"
-    end
-    --player.print(path)
-    local path = event.path
-    for i = 2 , #path do
-        rendering.draw_line{
-            color = {1,1,1,1},
-            width = 1,
-            from = path[i-1].position,
-            to = path[i].position,
-            surface = player.surface,
-            time_to_live = 45
-        }
-    end
-
-end) --]]
-
 ---@param str string
 ---@return string, integer
 local function format_name(str)
     return str:gsub("^%l", string.upper):gsub("-", " ")
 end
 
-local function collision()
-	local data = ""
-
-	for key, value in pairs(game.entity_prototypes ) do
-		local x = value.collision_box.right_bottom.x - value.collision_box.left_top.x
-		local y = value.collision_box.right_bottom.y - value.collision_box.left_top.y
-        
-		local n = format_name(value.name)
-		local s = string.format(
-        [[{ "%s" , {%ff, %ff} },
-        ]]
-		, n , x, y)
-		if x > 0.1 and y > 0.1 then
-			data = data .. s
-		end
-	end
-    for key, value in pairs(game.tile_prototypes) do
-        --local x = value.collision_box.right_bottom.x - value.collision_box.left_top.x
-		--local y = value.collision_box.right_bottom.y - value.collision_box.left_top.y
-		local n = format_name(value.name)
-		local s = string.format(
-        [[{ "%s" , {%d, %d} },
-        ]]
-		, n , 1, 1)
-		--if x > 0.1 and y > 0.1 then
-			data = data .. s
-		--end
-    end
-
-	game.write_file("collisions.txt", data )
-end
-
-local function recipe()
-   
-	local data = ""
-
-	for key, value in pairs(game.recipe_prototypes) do
-		local i = value.ingredients
-        local ingredients =""
-        for v in pairs(i) do
-            local ingredient = i[v]
-            ingredients = ingredients..", "..string.format([["%s", "%d" ]],format_name(ingredient.name), ingredient.amount)
-        end
-        --ingredients = ingredients.."}"
-		local n = format_name(key)
-		local s = string.format(
-        [[{ "%s", {%s }},
-        ]]
-		, n , ingredients.sub(ingredients, 2))
-		--if x > 0.1 and y > 0.1 then
-			data = data .. s
-		--end
-	end
-	game.write_file("recipe.txt", data )
-    player.print("Writing recipe.txt")
-end
-
---console events
-script.on_event(defines.events.on_console_chat, function(event)
-	if event.message and event.message == "collision" then
-		collision()
-	end
-    if event.message and event.message == "recipe" then
-		recipe()
-	end
-end)
-
 script.on_event(defines.events.on_tick, function(event)
     if event.tick % skip ~= 0 then return end
-    if game.speed > 2.01 then return end
+    if speed > 1.4 then return end
 
     if game.players == nil then return end
     player = game.players[1]
     if player == nil or player.character == nil then return end
 
-    update_gui_for_all_players()
-    --if true then return end --early end for performance
     draw_reachable_range()
     draw_reachable_entities()
     if not (burn or craft or craftable or output) then return end
@@ -719,6 +602,9 @@ script.on_event(defines.events.on_tick, function(event)
         end
     end
 end)
+
+script.on_nth_tick(11, update_gui_for_all_players)
+script.on_nth_tick(123, update_game_speed)
 
 script.on_event(defines.events.on_runtime_mod_setting_changed , function(event)
     local setting = event.setting
@@ -770,6 +656,7 @@ local function defines_to_string(i)
     else return ""..i
     end
 end
+
 local function direction_to_string(i)
     if i == defines.direction.east then return "east"
     elseif i == defines.direction.north then return "north"
@@ -822,10 +709,7 @@ local function step_to_print(step)
         extra = string.format("%s", step[3])
     end
 
-    local str = string.format("task: [%d], taskstep: %d - %s", step[1][1], step[1][2], extra)
-
-    --player_.print(string.format("step: %d, task: %d,%d%s", element_.selected_index, step[1][1], step[1][2], str))
-    return str
+    return string.format("task: [%d], taskstep: %d - %s", step[1][1], step[1][2], extra)
 end
 
 ---@param event EventData.on_gui_selection_state_changed
@@ -839,19 +723,15 @@ local function select_task(event)
     local type = step[2]
     if type == "walk" or type == "build" or type == "take" or type == "put" then
         if player_.character and player_.character.surface then
-        player_.character.surface.create_entity{
-            name = "flare",
-            position = step[3],
-            movement = {0,0},
-            height = 0,
-            vertical_speed = 0,
-            frame_speed = 120,
-        } end
-        --[[select_task_id = rendering.draw_sprite{
-            sprite = "utility.deconstruction_mark",
-            target = step_list[element_.selected_index][3],
-            surface = player_.character.surface,
-        }--]]
+            player_.character.surface.create_entity{
+                name = "flare",
+                position = step[3],
+                movement = {0,0},
+                height = 0,
+                vertical_speed = 0,
+                frame_speed = 120,
+            }
+        end
     end
 end
 
