@@ -31,7 +31,7 @@ styles["game_speed_number_textfield"] = {
 styles["t-tas-helper-tasks"] = {
     type = "list_box_style",
     parent = "list_box",
-    maximal_height = 450,
+    maximal_height = settings.startup["q-tasklist-size"].value,
 }
 
 data.raw.shortcut["t-tas-helper-toggle-gui"] = {

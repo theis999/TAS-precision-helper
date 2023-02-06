@@ -1,6 +1,15 @@
 data:extend(
 {
   {
+    type = "int-setting",
+    name = "q-tasklist-size",
+    setting_type = "startup",
+    default_value = 450,
+    minimum_value = 10,
+    maximum_value = 4000,
+    order = "q0",
+  },
+  {
     type = "bool-setting",
     name = "tas-reach",
     setting_type = "runtime-global",
