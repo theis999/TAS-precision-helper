@@ -1,14 +1,17 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.7.4
-Date: ????
+Date: 2023-02-02
   Changes:
+    - Increased the size of the tasklist from 300pixels to 450pixels to show more data
+    - Re-aligned some of the tasks to fit in the tasklist
+  Optimizations:
+    - Changed the tasklist to only show a splice of the full list
 ---------------------------------------------------------------------------------------------------
-Version: 0.7.4
+Version: 0.7.3
 Date: 20.12.2022
-  Initiated changlog:
+  Changes:
     - Made significant improvements to performance for TAS with large step-list
     - Cleanup of the code
-  Changes:
     - The game speed cut-off for updating now starts at 1.4 instead of 2.01
   Bugfixes:
     - Fixed that craftable and output settings wouldn't load correctly

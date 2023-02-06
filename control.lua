@@ -8,6 +8,14 @@ local steps = {}
 local step_list = {}
 local speed = 1
 
+
+local scope = {
+    index = 0,
+    start = 0,
+    stop = 0,
+    steps = {},
+}
+
 ---@diagnostic disable: assign-type-mismatch
 ---@type boolean
 local reach = settings.global["tas-reach"].value
@@ -342,11 +350,11 @@ local function build_gui(player_index)
     end
 
     do --tasklist
-        local flow = main_table.add{ type = "flow", direction = "vertical" }        
+        local flow = main_table.add{ type = "flow", direction = "vertical" }
         local display_flow = flow.add{ type = "flow", direction = "horizontal" }
         display_flow.add{ type = "label", style = "caption_label", caption = {"t-tas-helper.step-list"}, }
         display_flow.add{ type = "empty-widget", style = "game_speed_horizontal_space", }
-        refs.tasks = flow.add{type = "list-box", style = "t-tas-helper-tasks", items = steps}
+        refs.tasks = flow.add{type = "list-box", style = "t-tas-helper-tasks", items = scope.steps}
     end
 end
 
@@ -414,7 +422,7 @@ local function destroy_gui(player_index)
         global.player_info[player_index].refs.main_frame.destroy()
     end
     if global
-    and global.player_info 
+    and global.player_info
     and global.player_info[player_index]
     then
         global.player_info[player_index] = nil
@@ -429,51 +437,88 @@ local function amount(n)
 end
 
 ---Converts one entry in steps_ into a string for tasklist -> [task-number]: Taskname taskdetail
----@param i number
----@param steps table
+---@param step table
 ---@return string step_line
-local function step_to_string(i, steps)
-    local step = steps[i]
+local function step_to_string(step)
     if not step then return "" end
     local n = step[2]
     if not n then return "" end
 
     local extra = ""
     if n == "walk" then
-        extra = string.format("to [%.1f,%.1f]", step[3][1], step[3][2])
+        extra = string.format("to [%.2f,%.2f]", step[3][1], step[3][2])
     elseif n == "pick" then
-        extra = "" -- string.format("at [%.1f,%.1f]", step[3][1], step[3][2])
+        extra = string.format("ticks: %s", step[3])
     elseif n == "put" or n == "take" then
         extra = string.format("%s [item=%s]", amount(step[5]), step[4])
     elseif n == "craft" then
         extra = string.format("%s [item=%s]", amount(step[3]), step[4])
     elseif n == "build" then
-        extra = string.format("[item=%s] [%d,%d]", step[4], step[3][1], step[3][2])
+        extra = string.format("[item=%s] [%.1f,%.1f]", step[4], step[3][1], step[3][2])
     elseif n == "mine" then
-        extra = string.format("area [%.1f,%.1f]", step[3][1], step[3][2])
+        extra = string.format("area [%.2f,%.2f]", step[3][1], step[3][2])
     elseif n == "recipe" then
         extra = string.format("set [recipe=%s]", step[4])
     elseif n == "drop" then
         extra = string.format("item [item=%s]", step[4])
     elseif n == "filter" then
-        extra = string.format("type %s", step[4])
+        extra = string.format("[item=%s] at [%.1f,%.1f]", step[4], step[3][1], step[3][2])
     elseif n == "limit" then
-        extra = string.format("to %d slots", step[4])
+        extra = string.format("to %d [%.1f,%.1f]", step[4], step[3][1], step[3][2])
     elseif n == "tech" then
         n = "research"
         extra = string.format("[technology=%s]",step[3])
     elseif n == "priority" then
-        extra = string.format("in:%s, out:%s", step[4], step[5])
+        extra = string.format("{in:%s, out:%s}", step[4], step[5])
     elseif n == "launch" then
-        extra = string.format("[%.1f,%.1f]", step[3][1], step[3][2])
+        extra = string.format("[%d,%d]", step[3][1], step[3][2])
     elseif n == "rotate" then
-        if step[4] then n = "counter rotate" else n = "normal rotate" end
+        if step[4] then n = "c-Rotate" else n = "rotate" end
         extra = string.format("[%.1f,%.1f]", step[3][1], step[3][2])
     elseif n == "save" or n == "start" or n == "stop" or n == "pause" or n == "game_speed" or n == "idle" then
         extra = string.format("%s", step[3])
     end
-    -- return [task-number]: Taskname taskdetail 
     return string.format("[%d]: %s %s", step[1][1], n:gsub("^%l", string.upper), extra)
+end
+
+---comment
+---@param player_index uint
+---@param to_step uint
+local function handle_scroll(player_index, to_step)
+    local tasks = global.player_info[player_index].refs.tasks
+    local scope_changed = false
+    
+    while math.abs(to_step - scope.index) > 100 do
+        scope_changed = true
+        if to_step - scope.index < 0 then scope.index = scope.index - 100
+        else scope.index = scope.index + 100 end
+    end
+    if scope_changed then
+        scope = {
+            index = scope.index,
+            start = math.max(1, scope.index - 100),
+            stop = math.min(#steps, scope.index + 200),
+            steps = {},
+        }
+        for i = scope.start, scope.stop do
+            scope.steps[i] = steps[i]
+        end
+        global.player_info[player_index].refs.tasks.items = scope.steps
+        tasks = global.player_info[player_index].refs.tasks
+    end
+    tasks.scroll_to_item(to_step - (scope.start - 1), "top-third")
+    tasks.selected_index = to_step - (scope.start - 1)
+
+end
+
+local function handle_task_change(data)
+    if data and data.step then
+        local to_step = math.max(1, math.min(#steps, data.step))
+        for player_index, _ in pairs(game.players) do
+            ---@cast player_index uint
+            handle_scroll(player_index, to_step)
+        end
+    end
 end
 
 local function setup_tasklist()
@@ -482,23 +527,25 @@ local function setup_tasklist()
         step_list = remote.call("DunRaider-TAS", "get_task_list")
         if not step_list then return end
         for i = 1, #step_list do
-            steps[i] = step_to_string(i, step_list)
+            steps[i] = step_to_string(step_list[i])
+        end
+        scope = {
+            index = 0,
+            start = 1,
+            stop = math.min(#steps, 200),
+            steps = {},
+        }
+        for i = scope.start, scope.stop do
+            scope.steps[i] = steps[i]
         end
         for player_info, _ in pairs(global.player_info) do
-            global.player_info[player_info].refs.tasks.items = steps
+            global.player_info[player_info].refs.tasks.items = scope.steps
+            --handle_task_change({step = 1})
         end
         --setup event to fire on step change
         script.on_event(
             remote.call("DunRaider-TAS", "get_tas_step_change_id"),
-            function (data)
-                --player.print(steps[data.step])
-                for player_index, _ in pairs(game.players) do
-                    ---@cast player_index uint
-                    local tasks = global.player_info[player_index].refs.tasks
-                    tasks.scroll_to_item(data.step, "top-third")
-                    tasks.selected_index = data.step
-                end
-            end
+            handle_task_change
         )
     end
 end
@@ -551,6 +598,7 @@ end)
 
 script.on_load(function ()
     setup_tasklist()
+    ---@diagnostic disable
     reach = settings.global["tas-reach"].value
     reachable = settings.global["tas-reachable"].value
     burn = settings.global["tas-burn"].value
@@ -558,6 +606,7 @@ script.on_load(function ()
     craftable = settings.global["tas-craftable"].value
     output = settings.global["tas-output"].value
     reachable_range = settings.global["tas-reachable-range"].value
+    ---@diagnostic enable
 end)
 
 script.on_event(defines.events.on_player_created, function(event)
@@ -633,27 +682,13 @@ script.on_configuration_changed(function (param1)
     setup_tasklist()
 end)
 
-script.on_event(defines.events.on_gui_click, function(event)
-    local player_index = event.player_index
-    local refs = global.player_info[player_index].refs
-    local handlers = {
-        [refs.t_main_frame_close_button] = toggle_gui,
-        [refs.teleport_button] = teleport,
-    }
-    for element, handler in pairs(handlers) do
-        if event.element == element then
-            handler(event)
-        end
-    end
-end)
-
 local function defines_to_string(i)
     if i == defines.inventory.assembling_machine_input or i == defines.inventory.lab_input or i == defines.inventory.rocket_silo_input then
         return "input"
     elseif i == defines.inventory.assembling_machine_output then return "output"
     elseif i == defines.inventory.fuel then return "fuel"
     elseif i == defines.inventory.chest then return "inventory"
-    else return ""..i
+    else return tostring(i)
     end
 end
 
@@ -666,7 +701,7 @@ local function direction_to_string(i)
     elseif i == defines.direction.northwest then return "northwest"
     elseif i == defines.direction.southeast then return "southeast"
     elseif i == defines.direction.southwest then return "southwest"
-    else return ""..i
+    else return tostring(i)
     end
 end
 
@@ -675,53 +710,58 @@ local function step_to_print(step)
     local n = step[2]
     local extra = ""
     if n == "walk" then
-        extra = string.format("to [gps=%f,%f]", step[3][1], step[3][2])
+        extra = string.format("to [gps=%.2f,%.2f]", step[3][1], step[3][2])
     elseif n == "pick" then
         n = "pick up"
         --extra = string.format("at [gps=%f,%f]", step[3][1], step[3][2])
     elseif n == "put" or n == "take" then
-        extra = string.format("%s [item=%s] in [gps=%d,%d] %s", amount(step[5]), step[4], step[3][1], step[3][2], defines_to_string(step[6]))
+        extra = string.format("%s [item=%s] at [gps=%.1f,%.1f] %s", amount(step[5]), step[4], step[3][1], step[3][2], defines_to_string(step[6]))
     elseif n == "craft" then
         extra = string.format("%s [item=%s]", amount(step[3]), step[4])
     elseif n == "build" then
-        extra = string.format("[item=%s] [gps=%d,%d] %s", step[4], step[3][1], step[3][2], direction_to_string(step[5]))
+        extra = string.format("[item=%s] [gps=%.1f,%.1f] %s", step[4], step[3][1], step[3][2], direction_to_string(step[5]))
     elseif n == "mine" then --try to see if there is an entity
-        extra = string.format("area [gps=%f,%f] for %d ticks", step[3][1], step[3][2], step[4])
+        extra = string.format("area [gps=%.2f,%.2f] for %d ticks", step[3][1], step[3][2], step[4])
     elseif n == "recipe" then
-        extra = string.format("set [recipe=%s] at [gps=%f,%f]", step[4], step[3][1], step[3][2])
+        extra = string.format("set [recipe=%s] at [gps=%.1f,%.1f]", step[4], step[3][1], step[3][2])
     elseif n == "drop" then --todo
-        extra = string.format("item [item=%s] at [gps=%f,%f]", step[4], step[3][1], step[3][2])
+        extra = string.format("item [item=%s] at [gps=%.1f,%.1f]", step[4], step[3][1], step[3][2])
     elseif n == "filter" then
-        extra = string.format("type %s at [gps=%d,%d]", step[4], step[3][1], step[3][2])
+        extra = string.format("[item=%s] at [gps=%.1f,%.1f]", step[4], step[3][1], step[3][2])
     elseif n == "limit" then
-        extra = string.format("to %d slots at [gps=%d,%d]", step[4], step[3][1], step[3][2])
+        extra = string.format("to %d slots at [gps=%.1f,%.1f]", step[4], step[3][1], step[3][2])
     elseif n == "tech" then
         n = "research"
         extra = string.format("[technology=%s]",step[3])
     elseif n == "priority" then
-        extra = string.format("in:%s, out:%s at", step[4], step[5], step[3][1], step[3][2])
+        extra = string.format("in:%s, out:%s at [gps=%.1f,%.1f]", step[4], step[5], step[3][1], step[3][2])
     elseif n == "launch" then
-        extra = string.format("[%d,%d]", step[3][1], step[3][2])
+        extra = string.format("[gps=%d,%d]", step[3][1], step[3][2])
     elseif n == "rotate" then
-        if step[4] then n = "counter rotate" else n = "normal rotate" end
-        extra = string.format("[%d,%d]", step[3][1], step[3][2])
+        if step[4] then n = "c-rotate" else n = "rotate" end
+        extra = string.format("[gps=%.1f,%.1f]", step[3][1], step[3][2])
     elseif n == "save" or n == "start" or n == "stop" or n == "pause" or n == "game_speed" or n == "idle" then
         extra = string.format("%s", step[3])
     end
 
-    return string.format("task: [%d], taskstep: %d - %s", step[1][1], step[1][2], extra)
+    return string.format("task: [%d, %d] - %s %s", step[1][1], step[1][2], n, extra)
 end
 
 ---@param event EventData.on_gui_selection_state_changed
 local function select_task(event)
     local player_ = game.players[event.player_index]
     local element_ = event.element
-    local step = step_list[element_.selected_index]
+    local step = step_list[element_.selected_index + (scope.start - 1)]
 
-    player_.print(string.format("step: %d, %s", element_.selected_index, step_to_print(step)))
+    player_.print(string.format("step: %d, %s", element_.selected_index + (scope.start - 1), step_to_print(step)))
 
     local type = step[2]
-    if type == "walk" or type == "build" or type == "take" or type == "put" then
+    if type == "walk" or
+        type == "build" or
+        type == "take" or
+        type == "put" or
+        type == "rotate" or type == "c-rotate"
+    then
         if player_.character and player_.character.surface then
             player_.character.surface.create_entity{
                 name = "flare",
@@ -751,5 +791,19 @@ end)
 script.on_event(defines.events.on_lua_shortcut, function(event)
     if event.prototype_name == "t-tas-helper-toggle-gui" then
         toggle_gui(event)
+    end
+end)
+
+script.on_event(defines.events.on_gui_click, function(event)
+    local player_index = event.player_index
+    local refs = global.player_info[player_index].refs
+    local handlers = {
+        [refs.t_main_frame_close_button] = toggle_gui,
+        [refs.teleport_button] = teleport,
+    }
+    for element, handler in pairs(handlers) do
+        if event.element == element then
+            handler(event)
+        end
     end
 end)
