@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
-Version: 0.7.4
-Date: 2023-02-02
+Version: 0.7.5
+Date: 2023-02-06
   Changes:
     - Increased the size of the tasklist from 300pixels to 450pixels to show more data
     - Re-aligned some of the tasks to fit in the tasklist
@@ -8,7 +8,7 @@ Date: 2023-02-02
     - Changed the tasklist to only show a splice of the full list
 ---------------------------------------------------------------------------------------------------
 Version: 0.7.3
-Date: 20.12.2022
+Date: 2022-12-20
   Changes:
     - Made significant improvements to performance for TAS with large step-list
     - Cleanup of the code
