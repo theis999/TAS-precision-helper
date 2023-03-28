@@ -334,6 +334,21 @@ local function build_gui(player_index)
         refs.current_position = display_flow.add{ type = "label", caption = "[0 , 0]" }
     end
 
+    do --controls
+        local flow = main_table.add{ type = "flow", direction = "vertical" }
+        refs.btn_controls = flow
+        local display_flow = flow.add{ type = "flow", direction = "horizontal" }
+        display_flow.add{ type = "label", style = "caption_label", caption = {"t-tas-helper.tas-controls"}, }
+        display_flow.add{ type = "empty-widget", style = "game_speed_horizontal_space", }
+        local controls_flow = flow.add{ type = "flow", style = "game_speed_control_flow", direction = "horizontal", }
+        refs.btn_controls_controls_flow = controls_flow
+        controls_flow.add{ type = "empty-widget", style = "game_speed_horizontal_space", }
+        refs.editor_button = controls_flow.add{ type = "button", style = "tool_button", caption = "editor", }
+        refs.release_button = controls_flow.add{ type = "button", style = "tool_button", caption = "release", }
+        refs.resume_button = controls_flow.add{ type = "button", style = "tool_button", caption = "resume", }
+        refs.skip_button = controls_flow.add{ type = "button", style = "tool_button", caption = "skip", }
+    end
+
     do --teleport
         local flow = main_table.add{ type = "flow", direction = "vertical" }
         refs.teleport_flow = flow
@@ -794,12 +809,36 @@ script.on_event(defines.events.on_lua_shortcut, function(event)
     end
 end)
 
+local function editor()
+    if player then player.toggle_map_editor() end
+end
+local function release()
+    if remote.interfaces["DunRaider-TAS"] and remote.interfaces["DunRaider-TAS"].release then
+        remote.call("DunRaider-TAS", "release")
+    end
+end
+local function resume()
+    if remote.interfaces["DunRaider-TAS"] and remote.interfaces["DunRaider-TAS"].resume then
+        remote.call("DunRaider-TAS", "resume")
+    end
+end
+local function skip_c()
+    if remote.interfaces["DunRaider-TAS"] and remote.interfaces["DunRaider-TAS"].skip then
+        remote.call("DunRaider-TAS", "skip", 1)
+    end
+end
+
+
 script.on_event(defines.events.on_gui_click, function(event)
     local player_index = event.player_index
     local refs = global.player_info[player_index].refs
     local handlers = {
         [refs.t_main_frame_close_button] = toggle_gui,
         [refs.teleport_button] = teleport,
+        [refs.editor_button] = editor,
+        [refs.release_button] = release,
+        [refs.resume_button] = resume,
+        [refs.skip_button] = skip_c,
     }
     for element, handler in pairs(handlers) do
         if event.element == element then
