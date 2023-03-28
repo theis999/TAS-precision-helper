@@ -343,10 +343,10 @@ local function build_gui(player_index)
         local controls_flow = flow.add{ type = "flow", style = "game_speed_control_flow", direction = "horizontal", }
         refs.btn_controls_controls_flow = controls_flow
         controls_flow.add{ type = "empty-widget", style = "game_speed_horizontal_space", }
-        refs.editor_button = controls_flow.add{ type = "button", style = "tool_button", caption = "editor", }
-        refs.release_button = controls_flow.add{ type = "button", style = "tool_button", caption = "release", }
-        refs.resume_button = controls_flow.add{ type = "button", style = "tool_button", caption = "resume", }
-        refs.skip_button = controls_flow.add{ type = "button", style = "tool_button", caption = "skip", }
+        refs.editor_button = controls_flow.add{ type = "sprite-button", style = "tool_button", tooltip = "editor", sprite = "t_tas_controls_editor_icon",}
+        refs.release_button = controls_flow.add{ type = "sprite-button", style = "tool_button", tooltip = "release", sprite = "t_tas_controls_breaking_chain_icon",}
+        refs.resume_button = controls_flow.add{ type = "sprite-button", style = "tool_button", tooltip = "resume", sprite = "t_tas_controls_resume_icon",}
+        refs.skip_button = controls_flow.add{ type = "sprite-button", style = "tool_button", tooltip = "skip", sprite = "t_tas_controls_skip_icon",}
     end
 
     do --teleport
@@ -358,10 +358,10 @@ local function build_gui(player_index)
         local controls_flow = flow.add{ type = "flow", style = "game_speed_control_flow", direction = "horizontal", }
         refs.teleport_controls_flow = controls_flow
         controls_flow.add{ type = "empty-widget", style = "game_speed_horizontal_space", }
-        refs.x_textfield = controls_flow.add(make_textfield_spec("game_speed_number_textfield", player.position.x))
-        refs.y_textfield = controls_flow.add(make_textfield_spec("game_speed_number_textfield", player.position.y))
+        refs.x_textfield = controls_flow.add(make_textfield_spec("t_tas_helper_number_textfield", player.position.x))
+        refs.y_textfield = controls_flow.add(make_textfield_spec("t_tas_helper_number_textfield", player.position.y))
 
-        refs.teleport_button = controls_flow.add{ type = "button", style = "tool_button", caption = "go", }
+        refs.teleport_button = controls_flow.add{ type = "sprite-button", style = "tool_button", tooltip = "teleport", sprite = "t_tas_controls_teleport_icon",}
     end
 
     do --tasklist

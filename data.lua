@@ -20,10 +20,11 @@ styles["game_speed_control_flow"] = {
     vertical_align = "center",
 }
 
-styles["game_speed_number_textfield"] = {
+styles["t_tas_helper_number_textfield"] = {
     type = "textbox_style",
     parent = "textbox",
-    minimal_width = 50,
+    style = "very_short_number_textfield",
+    minimal_width = 25,
     horizontal_align = "right",
     horizontally_stretchable = "on",
 }
@@ -48,6 +49,49 @@ data.raw.shortcut["t-tas-helper-toggle-gui"] = {
 }
 
 data:extend({
+    {
+        type = "sprite",
+        name = "t_tas_controls_teleport_icon",
+        filename = "__Theis_tas_helper__/graphics/teleport.png",
+        position = { 0, 0 },
+        size = 64,
+        flags = { "icon" },
+    },
+    {
+        type = "sprite",
+        name = "t_tas_controls_skip_icon",
+        filename = "__Theis_tas_helper__/graphics/play-until.png",
+        priority = "medium",
+        width = 32,
+        height = 32,
+        mipmap_count = 2,
+        flags = {"gui-icon"},
+        scale = 0.5,
+    },
+    {
+        type = "sprite",
+        name = "t_tas_controls_resume_icon",
+        filename = "__Theis_tas_helper__/graphics/resume.png",
+        position = { 0, 0 },
+        size = 400,
+        flags = { "icon" },
+    },
+    {
+        type = "sprite",
+        name = "t_tas_controls_breaking_chain_icon",
+        filename = "__Theis_tas_helper__/graphics/breaking-chain.png",
+        position = { 0, 0 },
+        size = 64,
+        flags = { "icon" },
+    },
+    {
+        type = "sprite",
+        name = "t_tas_controls_editor_icon",
+        filename = "__Theis_tas_helper__/graphics/wisdom.png",
+        position = { 0, 0 },
+        size = 512,
+        flags = { "icon" },
+    },
     {
         type = "sprite",
         name = "game_speed_settings_icon_black",
@@ -101,17 +145,17 @@ data:extend({
         early_death_ticks = 3 * 60,
         pictures =
         {
-          {
-            filename = "__core__/graphics/shoot-cursor-red.png",
-            priority = "low",
-            width = 258,
-            height = 183,
-            frame_count = 1,
-            scale = 0.7,
-            flags = {"icon"}
-          }
+            {
+                filename = "__core__/graphics/shoot-cursor-red.png",
+                priority = "low",
+                width = 258,
+                height = 183,
+                frame_count = 1,
+                scale = 0.7,
+                flags = {"icon"}
+            }
         }
-      },
+    },
 })
 
 styles["game_speed_selected_slot_sized_button"] = {
