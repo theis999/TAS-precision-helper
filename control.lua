@@ -398,7 +398,7 @@ local function update_gui_for_all_players()
     end
 end
 
---@param event EventData
+---@param event EventData.on_lua_shortcut
 local function toggle_gui(event)
     local player_index = event.player_index
     local refs = global.player_info[player_index].refs
@@ -412,7 +412,7 @@ local function toggle_gui(event)
     player_.set_shortcut_toggled("t-tas-helper-toggle-gui", frame.visible)
 end
 
---@param event EventData
+---@param event EventData.on_gui_click
 local function teleport(event)
     local p = game.players[event.player_index]
     local refs = global.player_info[event.player_index].refs
@@ -526,6 +526,17 @@ local function handle_scroll(player_index, to_step)
         global.player_info[player_index].refs.tasks.items = scope.steps
         tasks = global.player_info[player_index].refs.tasks
     end
+    local step = step_list[to_step]
+    if step and step[3] and step[3][1] then
+        local x, y = step[3][1], step[3][2]
+        if global.current_highlight_box then global.current_highlight_box.destroy{} end
+        local highlight_box = game.surfaces[1].create_entity{
+            name = "highlight-box",
+            position = {0, 0}, -- ignored
+            bounding_box = {{x-0.5,y-0.5},{x+0.5,y+0.5}},
+        }
+        global.current_highlight_box = highlight_box
+    end
     tasks.scroll_to_item(to_step - (scope.start - 1), "top-third")
     tasks.selected_index = to_step - (scope.start - 1)
 
@@ -611,7 +622,7 @@ end
 
 script.on_event(defines.events.on_player_toggled_map_editor, function (event)
     if global.player_info and
-        global.player_info[event.player_index] and
+        global.player_info[event.player_index] and global.player_info[event.player_index].refs and
         global.player_info[event.player_index].refs.editor_button
     then
         global.player_info[event.player_index].refs.editor_button.style =
@@ -756,7 +767,7 @@ local function step_to_print(step)
         extra = string.format("area [gps=%.2f,%.2f] for %d ticks", step[3][1], step[3][2], step[4])
     elseif n == "recipe" then
         extra = string.format("set [recipe=%s] at [gps=%.1f,%.1f]", step[4], step[3][1], step[3][2])
-    elseif n == "drop" then --todo
+    elseif n == "drop" then
         extra = string.format("item [item=%s] at [gps=%.1f,%.1f]", step[4], step[3][1], step[3][2])
     elseif n == "filter" then
         extra = string.format("[item=%s] at [gps=%.1f,%.1f]", step[4], step[3][1], step[3][2])
@@ -770,7 +781,7 @@ local function step_to_print(step)
     elseif n == "launch" then
         extra = string.format("[gps=%d,%d]", step[3][1], step[3][2])
     elseif n == "rotate" then
-        if step[4] then n = "c-rotate" else n = "rotate" end
+        if step[4] then n = "counter-rotate" else n = "rotate" end
         extra = string.format("[gps=%.1f,%.1f]", step[3][1], step[3][2])
     elseif n == "save" or n == "start" or n == "stop" or n == "pause" or n == "game_speed" or n == "idle" then
         extra = string.format("%s", step[3])
@@ -792,7 +803,7 @@ local function select_task(event)
         type == "build" or
         type == "take" or
         type == "put" or
-        type == "rotate" or type == "c-rotate"
+        type == "rotate" or type == "counter-rotate"
     then
         if player_.character and player_.character.surface then
             player_.character.surface.create_entity{
