@@ -326,27 +326,27 @@ local function build_gui(player_index)
         }
     end
 
+    do --controls
+        local flow = main_table.add{ type = "flow", direction = "vertical" }
+        refs.btn_controls = flow
+        local display_flow = flow.add{ type = "flow", direction = "horizontal" }
+        --display_flow.add{ type = "label", style = "caption_label", caption = {"t-tas-helper.tas-controls"}, }
+        display_flow.add{ type = "empty-widget", style = "game_speed_horizontal_space", }
+        local controls_flow = flow.add{ type = "flow", style = "game_speed_control_flow", direction = "horizontal", }
+        refs.btn_controls_controls_flow = controls_flow
+        controls_flow.add{ type = "empty-widget", style = "game_speed_horizontal_space", }
+        refs.editor_button = controls_flow.add{ type = "sprite-button", style = "slot_sized_button", tooltip = "editor", sprite = "t_tas_controls_editor_icon",}
+        refs.release_button = controls_flow.add{ type = "sprite-button", style = "slot_sized_button", tooltip = "release", sprite = "t_tas_controls_breaking_chain_icon",}
+        refs.resume_button = controls_flow.add{ type = "sprite-button", style = "slot_sized_button", tooltip = "resume", sprite = "t_tas_controls_resume_icon",}
+        refs.skip_button = controls_flow.add{ type = "sprite-button", style = "slot_sized_button", tooltip = "skip", sprite = "t_tas_controls_skip_icon",}
+    end
+
     do --position
         local flow = main_table.add{ type = "flow", direction = "vertical" }
         flow.add{ type = "label", style = "caption_label", caption = "Position", }
         local display_flow = flow.add{ type = "flow", direction = "horizontal" }
         display_flow.add{ type = "empty-widget", style = "game_speed_horizontal_space", }
         refs.current_position = display_flow.add{ type = "label", caption = "[0 , 0]" }
-    end
-
-    do --controls
-        local flow = main_table.add{ type = "flow", direction = "vertical" }
-        refs.btn_controls = flow
-        local display_flow = flow.add{ type = "flow", direction = "horizontal" }
-        display_flow.add{ type = "label", style = "caption_label", caption = {"t-tas-helper.tas-controls"}, }
-        display_flow.add{ type = "empty-widget", style = "game_speed_horizontal_space", }
-        local controls_flow = flow.add{ type = "flow", style = "game_speed_control_flow", direction = "horizontal", }
-        refs.btn_controls_controls_flow = controls_flow
-        controls_flow.add{ type = "empty-widget", style = "game_speed_horizontal_space", }
-        refs.editor_button = controls_flow.add{ type = "sprite-button", style = "tool_button", tooltip = "editor", sprite = "t_tas_controls_editor_icon",}
-        refs.release_button = controls_flow.add{ type = "sprite-button", style = "tool_button", tooltip = "release", sprite = "t_tas_controls_breaking_chain_icon",}
-        refs.resume_button = controls_flow.add{ type = "sprite-button", style = "tool_button", tooltip = "resume", sprite = "t_tas_controls_resume_icon",}
-        refs.skip_button = controls_flow.add{ type = "sprite-button", style = "tool_button", tooltip = "skip", sprite = "t_tas_controls_skip_icon",}
     end
 
     do --teleport
@@ -357,7 +357,7 @@ local function build_gui(player_index)
         display_flow.add{ type = "empty-widget", style = "game_speed_horizontal_space", }
         local controls_flow = flow.add{ type = "flow", style = "game_speed_control_flow", direction = "horizontal", }
         refs.teleport_controls_flow = controls_flow
-        controls_flow.add{ type = "empty-widget", style = "game_speed_horizontal_space", }
+        --controls_flow.add{ type = "empty-widget", style = "game_speed_horizontal_space", }
         refs.x_textfield = controls_flow.add(make_textfield_spec("t_tas_helper_number_textfield", player.position.x))
         refs.y_textfield = controls_flow.add(make_textfield_spec("t_tas_helper_number_textfield", player.position.y))
 
@@ -547,7 +547,8 @@ local function handle_task_change(data)
 end
 
 local function setup_tasklist()
-    if remote.interfaces["DunRaider-TAS"] then
+    local interface = remote.interfaces["DunRaider-TAS"]
+    if interface then
         --setup task list
         step_list = remote.call("DunRaider-TAS", "get_task_list")
         if not step_list then return end
@@ -564,7 +565,13 @@ local function setup_tasklist()
             scope.steps[i] = steps[i]
         end
         for player_info, _ in pairs(global.player_info) do
-            global.player_info[player_info].refs.tasks.items = scope.steps
+            local refs = global.player_info[player_info].refs
+            refs.tasks.items = scope.steps
+            if refs.release_button and refs.skip_button and refs.resume_button then
+                refs.release_button.enabled = interface.release
+                refs.skip_button.enabled = interface.skip
+                refs.resume_button.enabled = interface.resume
+            end
             --handle_task_change({step = 1})
         end
         --setup event to fire on step change
@@ -606,6 +613,16 @@ local function change_setting(setting)
         reachable_range = settings.global["tas-reachable-range"].value
     end
 end
+
+script.on_event(defines.events.on_player_toggled_map_editor, function (event)
+    if global.player_info and
+        global.player_info[event.player_index] and
+        global.player_info[event.player_index].refs.editor_button
+    then
+        global.player_info[event.player_index].refs.editor_button.style =
+            game.players[event.player_index].controller_type == defines.controllers.editor and "game_speed_selected_slot_sized_button" or "slot_sized_button"
+    end
+end)
 
 script.on_init(function ()
     -- initialise player_info table
