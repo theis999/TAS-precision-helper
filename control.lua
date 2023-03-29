@@ -2,7 +2,6 @@ require("util")
 
 local id = 0
 local id2 = 0
-local skip = 1
 local player
 local steps = {}
 local step_list = {}
@@ -527,7 +526,7 @@ local function handle_scroll(player_index, to_step)
         tasks = global.player_info[player_index].refs.tasks
     end
     local step = step_list[to_step]
-    if step and step[3] and step[3][1] then
+    if step and step[3] and step[3][1] and step[3][2] then
         local x, y = step[3][1], step[3][2]
         if global.current_highlight_box then global.current_highlight_box.destroy{} end
         local highlight_box = game.surfaces[1].create_entity{
@@ -622,7 +621,8 @@ end
 
 script.on_event(defines.events.on_player_toggled_map_editor, function (event)
     if global.player_info and
-        global.player_info[event.player_index] and global.player_info[event.player_index].refs and
+        global.player_info[event.player_index] and
+        global.player_info[event.player_index].refs and
         global.player_info[event.player_index].refs.editor_button
     then
         global.player_info[event.player_index].refs.editor_button.style =
@@ -666,19 +666,22 @@ script.on_event(defines.events.on_pre_player_removed, function(event)
 end)
 
 script.on_event(defines.events.on_tick, function(event)
-    if event.tick % skip ~= 0 then return end
-    if speed > 1.4 then return end
+    if event.tick % skip ~= 0 or 
+        speed > 1.4 or
+        not game or game.players == nil
+    then
+        return
+    end
 
-    if game.players == nil then return end
     player = game.players[1]
     if player == nil or player.character == nil then return end
 
     draw_reachable_range()
-    draw_reachable_entities()
+    draw_reachable_entities() -- <- has it's own entity list 
     if not (burn or craft or craftable or output) then return end
     local entities = player.surface.find_entities_filtered{
         position = player.position,
-        radius = player.reach_distance+reachable_range,
+        radius = player.reach_distance + reachable_range,
         force = player.force
     }
 
@@ -695,7 +698,7 @@ script.on_event(defines.events.on_tick, function(event)
 end)
 
 script.on_nth_tick(11, update_gui_for_all_players)
-script.on_nth_tick(123, update_game_speed)
+script.on_nth_tick(23, update_game_speed)
 
 script.on_event(defines.events.on_runtime_mod_setting_changed , function(event)
     local setting = event.setting
