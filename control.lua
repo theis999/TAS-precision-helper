@@ -341,23 +341,18 @@ local function build_gui(player_index)
         refs.skip_button = controls_flow.add{ type = "sprite-button", style = "slot_sized_button", tooltip = "skip", sprite = "t_tas_controls_skip_icon",}
     end
 
-    do --position
+    do --position & teleport 
         local flow = main_table.add{ type = "flow", direction = "vertical" }
         flow.add{ type = "label", style = "caption_label", caption = "Position", }
-        local display_flow = flow.add{ type = "flow", direction = "horizontal" }
-        display_flow.add{ type = "empty-widget", style = "game_speed_horizontal_space", }
-        refs.current_position = display_flow.add{ type = "label", caption = "[0 , 0]" }
-    end
-
-    do --teleport
-        local flow = main_table.add{ type = "flow", direction = "vertical" }
+        local display_flow_pos = flow.add{ type = "flow", direction = "horizontal" }
+        display_flow_pos.add{ type = "empty-widget", style = "game_speed_horizontal_space", }
+        refs.current_position = display_flow_pos.add{ type = "label", caption = "[0 , 0]" }
         refs.teleport_flow = flow
         local display_flow = flow.add{ type = "flow", direction = "horizontal" }
         display_flow.add{ type = "label", style = "caption_label", caption = {"t-tas-helper.teleport"}, }
         display_flow.add{ type = "empty-widget", style = "game_speed_horizontal_space", }
         local controls_flow = flow.add{ type = "flow", style = "game_speed_control_flow", direction = "horizontal", }
         refs.teleport_controls_flow = controls_flow
-        --controls_flow.add{ type = "empty-widget", style = "game_speed_horizontal_space", }
         refs.x_textfield = controls_flow.add(make_textfield_spec("t_tas_helper_number_textfield", player.position.x))
         refs.y_textfield = controls_flow.add(make_textfield_spec("t_tas_helper_number_textfield", player.position.y))
 
