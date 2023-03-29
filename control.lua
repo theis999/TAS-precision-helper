@@ -451,49 +451,59 @@ local function amount(n)
     else return tostring(n) end
 end
 
+local function position_to_string(position)
+    -- round to 2 decimal places
+    local x = tonumber(string.format("%.2f", position.x))
+    local y = tonumber(string.format("%.2f", position.y))
+    return "[font=default-bold][" .. x .. ", " .. y .. "][/font]"
+end
+
+---@param str string
+---@return string, integer
+local function format_name(str)
+    return str:gsub("^%l", string.upper):gsub("-", " ")
+end
+
 ---Converts one entry in steps_ into a string for tasklist -> [task-number]: Taskname taskdetail
 ---@param step table
----@return string step_line
+---@return string|table step_line
 local function step_to_string(step)
     if not step then return "" end
     local n = step[2]
     if not n then return "" end
-
-    local extra = ""
+    local description
     if n == "walk" then
-        extra = string.format("to [%.2f,%.2f]", step[3][1], step[3][2])
-    elseif n == "pick" then
-        extra = string.format("ticks: %s", step[3])
+        description = {"tas-step.description_walk", position_to_string({x=step[3][1], y=step[3][2]})}
     elseif n == "put" or n == "take" then
-        extra = string.format("%s [item=%s]", amount(step[5]), step[4])
+        description = {"tas-step.description_"..n, amount(step[5]), step[4], position_to_string({x=step[3][1], y=step[3][2]})}
     elseif n == "craft" then
-        extra = string.format("%s [item=%s]", amount(step[3]), step[4])
+        description = {"tas-step.description_craft", amount(step[3]), step[4]}
     elseif n == "build" then
-        extra = string.format("[item=%s] [%.1f,%.1f]", step[4], step[3][1], step[3][2])
+        return {"tas-step.description_step", step[1][1], {"tas-step.description_build", step[4], position_to_string({x=step[3][1], y=step[3][2]})}}
     elseif n == "mine" then
-        extra = string.format("area [%.2f,%.2f]", step[3][1], step[3][2])
+        description = {"tas-step.description_mine", position_to_string({x=step[3][1], y=step[3][2]})}
     elseif n == "recipe" then
-        extra = string.format("set [recipe=%s]", step[4])
+        description = {"tas-step.description_recipe", step[4], position_to_string({x=step[3][1], y=step[3][2]})}
     elseif n == "drop" then
-        extra = string.format("item [item=%s]", step[4])
+        description = {"tas-step.description_drop", step[4], position_to_string({x=step[3][1], y=step[3][2]})}
     elseif n == "filter" then
-        extra = string.format("[item=%s] at [%.1f,%.1f]", step[4], step[3][1], step[3][2])
+        description = {"tas-step.description_filter", step[4], position_to_string({x=step[3][1], y=step[3][2]})}
     elseif n == "limit" then
-        extra = string.format("to %d [%.1f,%.1f]", step[4], step[3][1], step[3][2])
+        description = {"tas-step.description_limit", step[4], position_to_string({x=step[3][1], y=step[3][2]})}
     elseif n == "tech" then
-        n = "research"
-        extra = string.format("[technology=%s]",step[3])
+        description = {"tas-step.description_research", step[3]}
     elseif n == "priority" then
-        extra = string.format("{in:%s, out:%s}", step[4], step[5])
+        description = {"tas-step.description_priority", step[4], step[5], position_to_string({x=step[3][1], y=step[3][2]})}
+    elseif n == "pick" then
+        description = {"tas-step.description_pickup", amount(step[3])}
     elseif n == "launch" then
-        extra = string.format("[%d,%d]", step[3][1], step[3][2])
+        description = {"tas-step.description_launch", position_to_string({x=step[3][1], y=step[3][2]})}
     elseif n == "rotate" then
-        if step[4] then n = "c-Rotate" else n = "rotate" end
-        extra = string.format("[%.1f,%.1f]", step[3][1], step[3][2])
+        description = {"tas-step.description_rotate", step[4] and "tas_helper_rotate_anticlockwise" or "tas_helper_rotate_clockwise", position_to_string({x=step[3][1], y=step[3][2]})}
     elseif n == "save" or n == "start" or n == "stop" or n == "pause" or n == "game_speed" or n == "idle" then
-        extra = string.format("%s", step[3])
+        description = {"tas-step.description_misc", n == "game_speed" and "Game speed" or format_name(n), step[3] and amount(step[3]) or ""}
     end
-    return string.format("[%d]: %s %s", step[1][1], n:gsub("^%l", string.upper), extra)
+    return {"tas-step.description_step", step[1][1], description}
 end
 
 ---comment
@@ -632,12 +642,6 @@ script.on_event(defines.events.on_pre_player_removed, function(event)
     pcall(destroy_gui,event.player_index)
 end)
 
----@param str string
----@return string, integer
-local function format_name(str)
-    return str:gsub("^%l", string.upper):gsub("-", " ")
-end
-
 script.on_event(defines.events.on_tick, function(event)
     if event.tick % skip ~= 0 then return end
     if speed > 1.4 then return end
@@ -707,17 +711,18 @@ local function defines_to_string(i)
     end
 end
 
+local direction_strings = {
+    "north",
+    "northeast",
+    "east",
+    "southeast",
+    "south",
+    "southwest",
+    "west",
+    "northwest"
+}
 local function direction_to_string(i)
-    if i == defines.direction.east then return "east"
-    elseif i == defines.direction.north then return "north"
-    elseif i == defines.direction.west then return "west"
-    elseif i == defines.direction.south then return "south"
-    elseif i == defines.direction.northeast then return "northeast"
-    elseif i == defines.direction.northwest then return "northwest"
-    elseif i == defines.direction.southeast then return "southeast"
-    elseif i == defines.direction.southwest then return "southwest"
-    else return tostring(i)
-    end
+    return direction_strings[i+1]
 end
 
 ---converts a step into a printable sting
