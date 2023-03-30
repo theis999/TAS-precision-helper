@@ -355,7 +355,7 @@ local function build_gui(player_index)
         refs.x_textfield = controls_flow.add(make_textfield_spec("t_tas_helper_number_textfield", player.position.x))
         refs.y_textfield = controls_flow.add(make_textfield_spec("t_tas_helper_number_textfield", player.position.y))
 
-        refs.teleport_button = controls_flow.add{ type = "sprite-button", style = "tool_button", tooltip = "teleport", sprite = "t_tas_controls_teleport_icon",}
+        refs.teleport_button = controls_flow.add{ type = "sprite-button", style = "tool_button", tooltip = {"t-tas-helper.teleport"}, sprite = "t_tas_controls_teleport_icon",}
     end
 
     do --tasklist
