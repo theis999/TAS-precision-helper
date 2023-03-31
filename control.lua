@@ -335,7 +335,7 @@ local function build_gui(player_index)
         refs.btn_controls_controls_flow = controls_flow
         controls_flow.add{ type = "empty-widget", style = "game_speed_horizontal_space", }
         refs.editor_button = controls_flow.add{ type = "sprite-button", style = "slot_sized_button", tooltip = "editor", sprite = "t_tas_controls_editor_icon",}
-        refs.release_button = controls_flow.add{ type = "sprite-button", style = "slot_sized_button", tooltip = "release", sprite = "t_tas_controls_breaking_chain_icon",}
+        refs.release_button = controls_flow.add{ type = "sprite-button", style = "slot_sized_button", tooltip = "release", sprite = "t_tas_controls_release_icon",}
         refs.resume_button = controls_flow.add{ type = "sprite-button", style = "slot_sized_button", tooltip = "resume", sprite = "t_tas_controls_resume_icon",}
         refs.skip_button = controls_flow.add{ type = "sprite-button", style = "slot_sized_button", tooltip = "skip", sprite = "t_tas_controls_skip_icon",}
     end
