@@ -1,3 +1,5 @@
+local prefix = "__Theis_tas_helper__"
+local prefix_graphics = prefix .. "/graphics/"
 local styles = data.raw["gui-style"].default
 
 styles["game_speed_title_bar_draggable_space"] = {
@@ -43,16 +45,25 @@ data.raw.shortcut["t-tas-helper-toggle-gui"] = {
     localised_name = {"t-tas-helper.toggle-gui"},
     associated_control_input = "t-tas-helper-toggle-gui",
     icon = {
-        filename = "__core__/graphics/time-editor-icon.png",
-        size = 32,
+        filename = prefix_graphics.."cryo-chamber.png",
+        size = 256,
     },
 }
 
 data:extend({
     {
         type = "sprite",
+        name = "tas_helper_icon",
+        filename = prefix_graphics.."cryo-chamber.png",
+        position = { 0, 0 },
+        size = 256,
+        scale = 1/10,
+        flags = { "icon" },
+    },
+    {
+        type = "sprite",
         name = "tas_helper_rotate_anticlockwise",
-        filename = "__Theis_tas_helper__/graphics/rotate_anticlockwise.png",
+        filename = prefix_graphics.."rotate_anticlockwise.png",
         size = 32,
         scale = 0.5,
         mipmap_count = 2,
@@ -61,7 +72,7 @@ data:extend({
     {
         type = "sprite",
         name = "tas_helper_rotate_clockwise",
-        filename = "__Theis_tas_helper__/graphics/rotate_clockwise.png",
+        filename = prefix_graphics.."rotate_clockwise.png",
         size = 32,
         scale = 0.5,
         mipmap_count = 2,
@@ -70,7 +81,7 @@ data:extend({
     {
         type = "sprite",
         name = "t_tas_controls_teleport_icon",
-        filename = "__Theis_tas_helper__/graphics/teleport.png",
+        filename = prefix_graphics.."teleport.png",
         position = { 0, 0 },
         size = 64,
         flags = { "icon" },
@@ -78,7 +89,7 @@ data:extend({
     {
         type = "sprite",
         name = "t_tas_controls_skip_icon",
-        filename = "__Theis_tas_helper__/graphics/next-button.png",
+        filename = prefix_graphics.."next-button.png",
         position = { 0, 0 },
         size = 64,
         flags = { "icon" },
@@ -86,7 +97,7 @@ data:extend({
     {
         type = "sprite",
         name = "t_tas_controls_resume_icon",
-        filename = "__Theis_tas_helper__/graphics/play-button.png",
+        filename = prefix_graphics.."play-button.png",
         position = { 0, 0 },
         size = 64,
         flags = { "icon" },
@@ -94,7 +105,7 @@ data:extend({
     {
         type = "sprite",
         name = "t_tas_controls_release_icon",
-        filename = "__Theis_tas_helper__/graphics/pause-button.png",
+        filename = prefix_graphics.."pause-button.png",
         position = { 0, 0 },
         size = 64,
         flags = { "icon" },
@@ -102,7 +113,7 @@ data:extend({
     {
         type = "sprite",
         name = "t_tas_controls_editor_icon",
-        filename = "__Theis_tas_helper__/graphics/wisdom.png",
+        filename = prefix_graphics.."wisdom.png",
         position = { 0, 0 },
         size = 64,
         flags = { "icon" },
@@ -110,7 +121,7 @@ data:extend({
     {
         type = "sprite",
         name = "game_speed_settings_icon_black",
-        filename = "__Theis_tas_helper__/graphics/settings-icons.png",
+        filename = prefix_graphics.."settings-icons.png",
         position = { 0, 0 },
         size = 32,
         flags = { "icon" },
@@ -118,7 +129,7 @@ data:extend({
     {
         type = "sprite",
         name = "game_speed_settings_icon_white",
-        filename = "__Theis_tas_helper__/graphics/settings-icons.png",
+        filename = prefix_graphics.."settings-icons.png",
         position = { 32, 0 },
         size = 32,
         flags = { "icon" },
@@ -126,7 +137,7 @@ data:extend({
     {
         type = "sprite",
         name = "game_speed_play_until",
-        filename = "__Theis_tas_helper__/graphics/play-until.png",
+        filename = prefix_graphics.."play-until.png",
         priority = "medium",
         width = 32,
         height = 32,
@@ -137,7 +148,7 @@ data:extend({
     {
         type = "sprite",
         name = "game_speed_play_until_disabled",
-        filename = "__Theis_tas_helper__/graphics/play-until-disabled.png",
+        filename = prefix_graphics.."play-until-disabled.png",
         priority = "medium",
         width = 32,
         height = 32,

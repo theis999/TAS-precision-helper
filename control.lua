@@ -305,7 +305,8 @@ local function build_gui(player_index)
     do
         local title_bar = main_frame.add{ type = "flow", direction = "horizontal", name = "title_bar", }
         title_bar.drag_target = main_frame
-        title_bar.add{ type = "label", style = "frame_title", caption = "T-helper", ignored_by_interaction = true, }
+        title_bar.add{ type = "sprite", sprite = "tas_helper_icon"}
+        title_bar.add{ type = "label", style = "frame_title", caption = " Helper", ignored_by_interaction = true, }
         title_bar.add{ type = "empty-widget", style = "game_speed_title_bar_draggable_space", ignored_by_interaction = true, }
         --refs.toggle_options_button = title_bar.add{ type = "sprite-button", style = "frame_action_button", sprite = "game_speed_settings_icon_white", hovered_sprite = "game_speed_settings_icon_black", clicked_sprite = "game_speed_settings_icon_black", }
         refs.t_main_frame_close_button = title_bar.add{ type = "sprite-button", style = "frame_action_button", sprite = "utility/close_white", hovered_sprite = "utility/close_black", clicked_sprite = "utility/close_black", }
