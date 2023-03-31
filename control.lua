@@ -412,6 +412,17 @@ local function toggle_gui(event)
     player_.set_shortcut_toggled("t-tas-helper-toggle-gui", frame.visible)
 end
 
+local function toggle_editor(event)
+    local player_index = event.player_index
+    local refs = global.player_info[player_index].refs
+
+    -- toggle shortcut
+    local player_ = game.players[player_index]
+    player_.toggle_map_editor()
+    player_.set_shortcut_toggled("t-tas-helper-toggle-editor", player_.controller_type == defines.controllers.editor)
+end
+
+
 ---@param event EventData.on_gui_click
 local function teleport(event)
     local p = game.players[event.player_index]
@@ -707,6 +718,7 @@ script.on_event(defines.events.on_runtime_mod_setting_changed , function(event)
 end)
 
 script.on_event("t-tas-helper-toggle-gui", toggle_gui)
+script.on_event("t-tas-helper-toggle-editor", toggle_editor)
 
 script.on_configuration_changed(function (param1)
     local pi = true
@@ -838,6 +850,8 @@ end)
 script.on_event(defines.events.on_lua_shortcut, function(event)
     if event.prototype_name == "t-tas-helper-toggle-gui" then
         toggle_gui(event)
+    elseif event.prototype_name == "t-tas-helper-toggle-editor" then
+        toggle_editor(event)
     end
 end)
 

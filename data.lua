@@ -50,6 +50,19 @@ data.raw.shortcut["t-tas-helper-toggle-gui"] = {
     },
 }
 
+data.raw.shortcut["t-tas-helper-toggle-editor"] = {
+    type = "shortcut",
+    name = "t-tas-helper-toggle-editor",
+    toggleable = true,
+    action = "lua",
+    localised_name = {"t-tas-helper.toggle-editor"},
+    associated_control_input = "t-tas-helper-toggle-editor",
+    icon = {
+        filename = prefix_graphics.."wisdom.png",
+        size = 64,
+    },
+}
+
 data:extend({
     {
         type = "sprite",
@@ -227,3 +240,4 @@ local function add_hotkey(name, key_sequence, alternative_key_sequence, order)
 end
 
 add_hotkey("t-tas-helper-toggle-gui", "CONTROL + P", "", "a")
+add_hotkey("t-tas-helper-toggle-editor", "CONTROL + SHIFT + E", "", "b")

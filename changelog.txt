@@ -1,9 +1,11 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.8.0
-Date: 2023-03-23
+Date: 2023-03-31
   Changes:
     - Added buttons that control the TAS and a button that opens editor mod
     - Added icons to the new buttons
+    - Added new tool icon
+    - Added toggle editor as a tool
 ---------------------------------------------------------------------------------------------------
 Version: 0.7.6
 Date: 2023-02-06
