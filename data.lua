@@ -51,6 +51,24 @@ data.raw.shortcut["t-tas-helper-toggle-gui"] = {
 data:extend({
     {
         type = "sprite",
+        name = "tas_helper_rotate_anticlockwise",
+        filename = "__Theis_tas_helper__/graphics/rotate_anticlockwise.png",
+        size = 32,
+        scale = 0.5,
+        mipmap_count = 2,
+        flags = {"gui-icon"},
+    },
+    {
+        type = "sprite",
+        name = "tas_helper_rotate_clockwise",
+        filename = "__Theis_tas_helper__/graphics/rotate_clockwise.png",
+        size = 32,
+        scale = 0.5,
+        mipmap_count = 2,
+        flags = {"gui-icon"},
+    },
+    {
+        type = "sprite",
         name = "t_tas_controls_teleport_icon",
         filename = "__Theis_tas_helper__/graphics/teleport.png",
         position = { 0, 0 },
