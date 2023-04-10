@@ -118,7 +118,7 @@ data:extend({
     {
         type = "sprite",
         name = "t_tas_controls_release_icon",
-        filename = prefix_graphics.."pause-button.png",
+        filename = prefix_graphics.."breaking-chain.png",
         position = { 0, 0 },
         size = 64,
         flags = { "icon" },

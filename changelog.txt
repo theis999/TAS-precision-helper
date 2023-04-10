@@ -1,4 +1,26 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.9.0
+Date: 2023-04-10
+  Changes:
+    - Converted printed steps to use mostly localized strings
+    - Added a box indicating where the next step is, on TAS change step
+    - Added Flares to more printed step types
+    - Added a 'predicted' target entity to printed strings interacting with an entity. It will not be accurate if the entity is not built yet or has been deconstructed already.
+    - Added GUI width setting
+    - Added a settings frame
+    - Converted settings to use the settings frame instead of factorios settings management
+    - Changed it so the GUI position is saved for future runs
+    - Changed Resume/release to use only one button that toggles between them
+    - Changed the icon of Resume/Release
+    - Changed Resume/Release and Skip button to start disabled
+    - Added event handler that toggles Resume/Release when TAS changes state
+    - Added speed boost indicator. That checks if the character is on boosting tile or a belt going in the same direction.
+---------------------------------------------------------------------------------------------------
+Version: 0.8.1
+Date: 2023-04-04
+  Bugfixes:
+    - Fixed a problem with crafting steps crashing the game
+---------------------------------------------------------------------------------------------------
 Version: 0.8.0
 Date: 2023-03-31
   Changes:

@@ -6,7 +6,18 @@ local player
 local steps = {}
 local step_list = {}
 local speed = 1
+local gui_width = settings.startup["q-gui-width"].value
 
+local settings_prefix = "t-tas-helper_"
+
+local reachable_range_limit = {
+    min = -5,
+    max = 100,
+}
+local skip_tick_limit = {
+    min = 1,
+    max = 1000,
+}
 
 local scope = {
     index = 0,
@@ -15,32 +26,110 @@ local scope = {
     steps = {},
 }
 
----@diagnostic disable: assign-type-mismatch
----@type boolean
-local reach = settings.global["tas-reach"].value
----@type boolean
-local reachable = settings.global["tas-reachable"].value
----@type boolean
-local burn = settings.global["tas-burn"].value
----@type boolean
-local craft = settings.global["tas-craft"].value
----@type uint
-local reachable_range = settings.global["tas-reachable-range"].value
----@type uint
-local skip = settings.global["tas-skip-tick"].value
----@type boolean
-local craftable = settings.global["tas-craftable"].value
----@type boolean
-local output = settings.global["tas-output"].value
----@diagnostic enable: assign-type-mismatch
-
 local function update_game_speed()
     if game then speed = game.speed end
 end
 
+local function update_speed_boost()
+    if not global.settings.speed_boost then return end
+    ---@type LuaPlayer
+    local p = player or game and game.players and game.players[1]
+    if not (p or p.character) then return end
+    local _speed = p.character.character_running_speed
+    local _position = p.character.position
+    local _position_int = {x = math.floor(_position.x), y = math.floor(_position.y)}
+    local _walking = p.character.walking_state
+    local data = global.speed_boost_data or {position = {x=5, y=7}, speed = 0.15}
+
+    if data.position_int ~= _position_int or data.speed ~= _speed then
+        if data.speed_id then
+            rendering.destroy(data.speed_id)
+            data.speed_id = nil
+        end
+        data.speed = _speed
+        data.position_int = _position_int
+        if _speed > 0.15 then
+            data.speed_id = rendering.draw_rectangle{
+                color = {0.5,1,0.5,0.2},
+                filled = true,
+                left_top = _position_int,
+                right_bottom = {x =  _position_int.x + 1, y = _position_int.y +1},
+                surface = p.surface,
+                draw_on_ground = true,
+                only_in_alt_mode = true,
+            }
+        end
+    end
+
+    ---@type LuaEntity?
+    local _entity = global.speed_boost_data and global.speed_boost_data.entity or nil
+    local box = _entity and _entity.valid and _entity.bounding_box and {
+        left_top = {x = math.floor(_entity.bounding_box.left_top.x), y = math.floor(_entity.bounding_box.left_top.y)},
+        right_bottom = {x = math.ceil(_entity.bounding_box.right_bottom.x), y = math.ceil(_entity.bounding_box.right_bottom.y)},
+    }
+    if _entity and box and
+        box.left_top.x <= _position.x and box.left_top.y <= _position.y and
+        box.right_bottom.x >= _position.x and box.right_bottom.y >= _position.y
+    then --color change
+        local _orientation = math.floor(_entity.orientation * 8)
+        local a = not _walking.walking or _orientation  == _walking.direction
+        if not data.color and a then
+            rendering.set_color(data._entity_id, {1,1,1})
+            data.color = true
+        elseif data.color and not a then
+            rendering.set_color(data._entity_id, {1,0,0})
+            data.color = false
+        end
+    elseif data._entity_id then
+        rendering.destroy(data._entity_id)
+        local entities = p.surface.find_entities_filtered{
+            area = {_position_int, {_position_int.x + 1, _position_int.y + 1}},
+            type = {"transport-belt", "splitter"},
+            limit = 1
+        }
+        data.entity = entities and entities[1] or nil
+        if data.entity then
+            local _orientation = math.floor(data.entity.orientation * 8)
+            local a = not _walking.walking or _orientation  == _walking.direction
+            data._entity_id = rendering.draw_rectangle{
+                color = a and {1,1,1} or {1,0,0},
+                left_top = data.entity.bounding_box.left_top,
+                right_bottom = data.entity.bounding_box.right_bottom,
+                surface = data.entity.surface,
+                draw_on_ground = false,
+                only_in_alt_mode = true,
+            }
+            data.color = a
+        end
+    else
+        
+        local entities = p.surface.find_entities_filtered{
+            area = {_position_int, {_position_int.x + 1, _position_int.y + 1}},
+            type = {"transport-belt", "splitter"},
+            limit = 1
+        }
+        data.entity = entities and entities[1] or nil
+        if data.entity then
+            local _orientation = math.floor(data.entity.orientation * 8)
+            local a = not _walking.walking or _orientation  == _walking.direction
+            data._entity_id = rendering.draw_rectangle{
+                color = a and {1,1,1} or {1,0,0},
+                left_top = data.entity.bounding_box.left_top,
+                right_bottom = data.entity.bounding_box.right_bottom,
+                surface = data.entity.surface,
+                draw_on_ground = false,
+                only_in_alt_mode = true,
+            }
+            data.color = a
+        end
+    end
+
+    global.speed_boost_data = data
+end
+
 ---Draws two circles indication your range
 local function draw_reachable_range()
-    if not reach then return end
+    if not global.player_info[1].refs.settings.circles.state then return end
     if id == 0 then
         id = rendering.draw_circle{
             color = {r=0.5,a=0.5},
@@ -68,10 +157,10 @@ end
 
 ---draws bounding boxes on entities in range
 local function draw_reachable_entities()
-    if not reachable then return end
+    if not global.player_info[1].refs.settings.reachable.state then return end
     local entities = player.surface.find_entities_filtered{
         position = player.position,
-        radius = player.reach_distance+reachable_range,
+        radius = player.reach_distance + global.settings.range,
         force = player.force
     }
     for i in pairs(entities) do
@@ -83,16 +172,17 @@ local function draw_reachable_entities()
                 left_top = entities[i].bounding_box.left_top,
                 right_bottom = entities[i].bounding_box.right_bottom,
                 surface = player.surface,
-                time_to_live = skip+1
+                time_to_live = global.settings.skip + 1
             }
         end
     end
 
     entities = player.surface.find_entities_filtered{
         position = player.position,
-        radius = player.resource_reach_distance+reachable_range,
-        ---@diagnostic disable-next-line:undefined-global
-        force = none
+        radius = player.resource_reach_distance + global.settings.range,
+        force = player.force,
+        name = "highlight-box",
+        invert = true,
     }
     for i in pairs(entities) do
         if entities[i] ~= player.character and player.can_reach_entity(entities[i]) then
@@ -103,7 +193,7 @@ local function draw_reachable_entities()
                 left_top = entities[i].bounding_box.left_top,
                 right_bottom = entities[i].bounding_box.right_bottom,
                 surface = player.surface,
-                time_to_live = skip + 1,
+                time_to_live = global.settings.skip + 1,
                 draw_on_ground = true
             }
         end
@@ -113,7 +203,7 @@ end
 ---Draws crafting time left in ticks, of the current craft, for a furnace or assembler
 ---@param entity LuaEntity
 local function draw_craft(entity)
-    if not craft then return end
+    if not global.settings.craft then return end
     if entity.prototype.type == "furnace" or entity.type == "assembling-machine" then
         local rec = entity.get_recipe()
         if rec ~= nil then
@@ -124,7 +214,7 @@ local function draw_craft(entity)
                 surface = entity.surface,
                 target = entity.bounding_box.left_top,
                 color = {1,1,1,1},
-                time_to_live=skip+1
+                time_to_live = global.settings.skip + 1
             }
         end
     end
@@ -133,7 +223,7 @@ end
 ---Draws fuel remaining in seconds on a burner entity (furnace, boiler, burner inserter etc.)
 ---@param entity LuaEntity
 local function draw_burn(entity)
-    if not burn then return end
+    if not global.settings.burn then return end
     local fuel
     local fuel_remain = 0
     if  entity.burner == nil then return end
@@ -158,14 +248,14 @@ local function draw_burn(entity)
         surface = entity.surface,
         target = {entity.bounding_box.left_top.x, entity.bounding_box.right_bottom.y - 0.5},
         color = {1,1,1,1},
-        time_to_live=skip+1
+        time_to_live = global.settings.skip + 1
     }
 end
 
 ---Draws the time an assembler will craft with the current input and the number of craftable items an assembler will produce before it runs out of resources
 ---@param entity LuaEntity
 local function draw_craftable(entity)
-    if not craftable then return end
+    if not global.settings.craftable then return end
     local inv = entity.get_inventory(defines.inventory.assembling_machine_input)
     if inv == nil or entity.type ~= "assembling-machine" then return end
     local rec = entity.get_recipe()
@@ -194,7 +284,7 @@ local function draw_craftable(entity)
         surface = entity.surface,
         target = {entity.bounding_box.left_top.x, entity.bounding_box.right_bottom.y -0.5}, --left bottom
         color = {1,1,1,1},
-        time_to_live=skip+1
+        time_to_live = global.settings.skip + 1
     }
 
     local color = {1,0,0,1} --red
@@ -208,14 +298,14 @@ local function draw_craftable(entity)
         surface = entity.surface,
         target = {entity.bounding_box.right_bottom.x - 0.5, entity.bounding_box.left_top.y}, --right top
         color = color,
-        time_to_live=skip+1
+        time_to_live = global.settings.skip + 1
     }
 end
 
 ---Draws the time left an lab can work and the number of cycles it has left
 ---@param entity LuaEntity
 local function draw_lab(entity)
-    if not craftable then return end
+    if not global.settings.craftable then return end
     local inv = entity.get_inventory(defines.inventory.lab_input)
     local research = player.force.current_research
     if inv == nil or research == nil or entity.type ~= "lab" then return end
@@ -241,7 +331,7 @@ local function draw_lab(entity)
         surface = entity.surface,
         target = {entity.bounding_box.left_top.x, entity.bounding_box.right_bottom.y -0.5}, --left bottom
         color = {1,1,0,1},
-        time_to_live=skip+1
+        time_to_live = global.settings.skip + 1
     }
 
     rendering.draw_text{
@@ -249,14 +339,14 @@ local function draw_lab(entity)
         surface = entity.surface,
         target = {entity.bounding_box.right_bottom.x - 0.85, entity.bounding_box.left_top.y}, --right top
         color = {1,1,1,1},
-        time_to_live=skip+1
+        time_to_live = global.settings.skip + 1
     }
 end
 
 ---Draws the number of items ready for pick up
 ---@param entity LuaEntity
 local function draw_output(entity)
-    if not output then return end
+    if not global.settings.output then return end
     local count = -1
     local t = entity.type
     if t == "assembling-machine" then
@@ -281,7 +371,7 @@ local function draw_output(entity)
             surface = entity.surface,
             target = {entity.bounding_box.right_bottom.x - 0.5, entity.bounding_box.right_bottom.y - 0.5}, --right bottom
             color = {1,1,1,1},
-            time_to_live=skip+1
+            time_to_live = global.settings.skip + 1
         }
     end
 end
@@ -299,6 +389,8 @@ local function build_gui(player_index)
     local refs = global.player_info[player_index].refs
 
     local main_frame = screen.add{ type = "frame", direction = "vertical", }
+    main_frame.location = {x = settings.global[settings_prefix.."x"].value, y = settings.global[settings_prefix.."y"].value}
+    main_frame.style.width = gui_width
     refs.main_frame = main_frame
 
     -- add title bar (from raiguard's style guide)
@@ -308,7 +400,7 @@ local function build_gui(player_index)
         title_bar.add{ type = "sprite", sprite = "tas_helper_icon"}
         title_bar.add{ type = "label", style = "frame_title", caption = " Helper", ignored_by_interaction = true, }
         title_bar.add{ type = "empty-widget", style = "game_speed_title_bar_draggable_space", ignored_by_interaction = true, }
-        --refs.toggle_options_button = title_bar.add{ type = "sprite-button", style = "frame_action_button", sprite = "game_speed_settings_icon_white", hovered_sprite = "game_speed_settings_icon_black", clicked_sprite = "game_speed_settings_icon_black", }
+        refs.toggle_options_button = title_bar.add{ type = "sprite-button", style = "frame_action_button", sprite = "game_speed_settings_icon_white", hovered_sprite = "game_speed_settings_icon_black", clicked_sprite = "game_speed_settings_icon_black", }
         refs.t_main_frame_close_button = title_bar.add{ type = "sprite-button", style = "frame_action_button", sprite = "utility/close_white", hovered_sprite = "utility/close_black", clicked_sprite = "utility/close_black", }
     end
 
@@ -326,6 +418,67 @@ local function build_gui(player_index)
         }
     end
 
+    do
+        local prefix = settings_prefix
+        local function setting(name)
+            return settings.global[prefix..name].value
+        end
+
+        local frame = screen.add{ type = "frame", direction = "vertical", visible = false, }
+        global.settings_frame = frame
+        --frame.force_auto_center()
+
+        local title_bar = frame.add{ type = "flow", direction = "horizontal", name = "title_bar", }
+        title_bar.drag_target = frame
+        title_bar.add{ type = "sprite", sprite = "tas_helper_icon"}
+        title_bar.add{ type = "label", style = "frame_title", caption = "Settings", ignored_by_interaction = true, }
+        title_bar.add{ type = "empty-widget", style = "tas_helper_title_bar_draggable_space", ignored_by_interaction = true, }
+        local close_options_button = title_bar.add{ type = "sprite-button", style = "frame_action_button", sprite = "utility/close_white", hovered_sprite = "utility/close_black", clicked_sprite = "utility/close_black", }
+        refs.close_options_button = close_options_button
+
+        local inside_shallow_frame = frame.add{ type = "frame", style = "inside_shallow_frame", direction = "vertical", }
+        inside_shallow_frame.style.top_padding = 6
+        inside_shallow_frame.style.bottom_padding = 6
+        local settings = inside_shallow_frame.add{ type = "frame", style = "bordered_frame_with_extra_side_margins", direction = "vertical", }
+        settings.style.horizontally_stretchable = true
+        settings.style.minimal_width = 180
+        global.elements = {settings = settings}
+        settings.add{ type = "label", style = "caption_label", caption = "Show", }
+        settings.add{ type = "checkbox", caption = "Reach circles", state = setting("circles"), name = "show_circles" }
+        settings.add{ type = "checkbox", caption = "Highlight reachable", state = setting("reachable"), name = "show_reachable" }
+        settings.add{ type = "checkbox", caption = "Crafting timer", state = setting("craft"), name = "show_craft" }
+        settings.add{ type = "checkbox", caption = "Burn timer", state = setting("burn"), name = "show_burn" }
+        settings.add{ type = "checkbox", caption = "Craftable count", state = setting("craftable"), name = "show_craftable" }
+        settings.add{ type = "checkbox", caption = "Output count", state = setting("output"), name = "show_output" }
+        settings.add{ type = "checkbox", caption = "Highlight speed boost", state = setting("speed_boost"), name = "speed_boost" }
+
+        settings.add{ type = "line" }
+
+        settings.add{ type = "flow", direction = "horizontal", name = "skip_tick", }
+        settings.skip_tick.add{ type = "label", caption = "Skip tick [img=info]: ", tooltip = "something about ticks", name = "label" }
+        settings.skip_tick.add{ type = "empty-widget", }.style.horizontally_stretchable = true
+        settings.skip_tick.add{ type = "textfield", style = "very_short_number_textfield", text = setting("skip-tick"), numeric = true, name = "textfield", }
+        settings.skip_tick.textfield.style.horizontal_align = "right"
+
+        settings.add{ type = "flow", direction = "horizontal", name = "reachable_range", }
+        settings.reachable_range.add{ type = "label", caption = "Reachable range [img=info]: ", tooltip = "something about reach", name = "label" }
+        settings.reachable_range.add{ type = "empty-widget", }.style.horizontally_stretchable = true
+        settings.reachable_range.add{ type = "textfield", style = "very_short_number_textfield", text = setting("reachable-range"), numeric = true, allow_negative = true, name = "textfield", }
+        settings.reachable_range.textfield.style.horizontal_align = "right"
+
+        refs.settings = {
+            circles = global.elements.settings.show_circles,
+            reachable = global.elements.settings.show_reachable,
+            craft = global.elements.settings.show_craft,
+            burn = global.elements.settings.show_burn,
+            craftable = global.elements.settings.show_craftable,
+            output = global.elements.settings.show_output,
+            speed_boost = global.elements.settings.speed_boost,
+            skip = global.elements.settings.skip_tick.textfield,
+            range = global.elements.settings.reachable_range.textfield,
+        }
+    end
+
     do --controls
         local flow = main_table.add{ type = "flow", direction = "vertical" }
         refs.btn_controls = flow
@@ -336,8 +489,7 @@ local function build_gui(player_index)
         refs.btn_controls_controls_flow = controls_flow
         controls_flow.add{ type = "empty-widget", style = "game_speed_horizontal_space", }
         refs.editor_button = controls_flow.add{ type = "sprite-button", style = "slot_sized_button", tooltip = "editor", sprite = "t_tas_controls_editor_icon",}
-        refs.release_button = controls_flow.add{ type = "sprite-button", style = "slot_sized_button", tooltip = "release", sprite = "t_tas_controls_release_icon",}
-        refs.resume_button = controls_flow.add{ type = "sprite-button", style = "slot_sized_button", tooltip = "resume", sprite = "t_tas_controls_resume_icon",}
+        refs.release_button = controls_flow.add{ type = "sprite-button", style = "slot_sized_button", tooltip = "release", sprite = "t_tas_controls_release_icon", enabled = false}
         refs.skip_button = controls_flow.add{ type = "sprite-button", style = "slot_sized_button", tooltip = "skip", sprite = "t_tas_controls_skip_icon",}
     end
 
@@ -387,11 +539,6 @@ local function update_gui_internal(player_index)
     end
 end
 
----@param player_index uint?
-local function update_gui(player_index)
-    update_gui_internal(player_index)
-end
-
 local function update_gui_for_all_players()
     if speed < 1.4 then
         update_gui_internal()
@@ -407,6 +554,8 @@ local function toggle_gui(event)
     frame.visible = not frame.visible
     frame.bring_to_front()
 
+    if not frame.visible and global.settings_frame.visible then global.settings_frame.visible = false end
+
     -- toggle shortcut
     local player_ = game.players[player_index]
     player_.set_shortcut_toggled("t-tas-helper-toggle-gui", frame.visible)
@@ -421,7 +570,6 @@ local function toggle_editor(event)
     player_.toggle_map_editor()
     player_.set_shortcut_toggled("t-tas-helper-toggle-editor", player_.controller_type == defines.controllers.editor)
 end
-
 
 ---@param event EventData.on_gui_click
 local function teleport(event)
@@ -504,10 +652,14 @@ local function step_to_string(step)
         description = {"tas-step.description_pickup", amount(step[3])}
     elseif n == "launch" then
         description = {"tas-step.description_launch", position_to_string({x=step[3][1], y=step[3][2]})}
+    elseif n == "cancel crafting" then
+        description = {"tas-step.description_cancel_crafting", amount(step[3]), step[4]}
     elseif n == "rotate" then
         description = {"tas-step.description_rotate", step[4] and "tas_helper_rotate_anticlockwise" or "tas_helper_rotate_clockwise", position_to_string({x=step[3][1], y=step[3][2]})}
-    elseif n == "save" or n == "start" or n == "stop" or n == "pause" or n == "game_speed" or n == "idle" then
-        description = {"tas-step.description_misc", n == "game_speed" and "Game speed" or format_name(n), step[3] and amount(step[3]) or ""}
+    elseif n == "speed" then
+        description = {"tas-step.description_speed", step[3]*100 }
+    elseif n == "save" or n == "start" or n == "stop" or n == "pause" or n == "idle" then
+        description = {"tas-step.description_misc", n == "speed" and "Game speed" or format_name(n), step[3] and amount(step[3]) or ""}
     end
     return {"tas-step.description_step", step[1][1], description}
 end
@@ -518,7 +670,7 @@ end
 local function handle_scroll(player_index, to_step)
     local tasks = global.player_info[player_index].refs.tasks
     local scope_changed = false
-    
+
     while math.abs(to_step - scope.index) > 100 do
         scope_changed = true
         if to_step - scope.index < 0 then scope.index = scope.index - 100
@@ -538,7 +690,7 @@ local function handle_scroll(player_index, to_step)
         tasks = global.player_info[player_index].refs.tasks
     end
     local step = step_list[to_step]
-    if step and step[3] and step[3][1] and step[3][2] then
+    if step and step[3] and type(step[3]) == "table" and step[3][1] and step[3][2] then
         local x, y = step[3][1], step[3][2]
         if global.current_highlight_box then global.current_highlight_box.destroy{} end
         local highlight_box = game.surfaces[1].create_entity{
@@ -550,7 +702,6 @@ local function handle_scroll(player_index, to_step)
     end
     tasks.scroll_to_item(to_step - (scope.start - 1), "top-third")
     tasks.selected_index = to_step - (scope.start - 1)
-
 end
 
 local function handle_task_change(data)
@@ -559,6 +710,17 @@ local function handle_task_change(data)
         for player_index, _ in pairs(game.players) do
             ---@cast player_index uint
             handle_scroll(player_index, to_step)
+        end
+    end
+end
+
+local function handle_state_change(data)
+    if data then
+        for index, player_info in pairs(global.player_info) do
+            if player_info.refs and player_info.refs.release_button then
+                player_info.refs.release_button.style = data.is_running and "game_speed_selected_slot_sized_button" or "slot_sized_button"
+                player_info.refs.release_button.tooltip = data.is_running and "release" or "resume"
+            end
         end
     end
 end
@@ -584,10 +746,9 @@ local function setup_tasklist()
         for player_info, _ in pairs(global.player_info) do
             local refs = global.player_info[player_info].refs
             refs.tasks.items = scope.steps
-            if refs.release_button and refs.skip_button and refs.resume_button then
+            if refs.release_button and refs.skip_button then
                 refs.release_button.enabled = interface.release
                 refs.skip_button.enabled = interface.skip
-                refs.resume_button.enabled = interface.resume
             end
             --handle_task_change({step = 1})
         end
@@ -596,10 +757,15 @@ local function setup_tasklist()
             remote.call("DunRaider-TAS", "get_tas_step_change_id"),
             handle_task_change
         )
+        script.on_event(
+            remote.call("DunRaider-TAS", "get_tas_state_change_id"),
+            handle_state_change
+        )
     end
 end
 
 local function change_setting(setting)
+    if true then return end
     if (setting == "tas-reach") then
         reach = settings.global["tas-reach"].value
         if id ~= 0 then
@@ -626,6 +792,9 @@ local function change_setting(setting)
     if (setting == "tas-output") then
         output = settings.global["tas-output"].value
     end
+    if (setting == "tas-speed_boost") then
+        speed_boost = settings.global["tas-speed_boost"].value
+    end
     if (setting == "tas-reachable-range") then
         reachable_range = settings.global["tas-reachable-range"].value
     end
@@ -645,6 +814,17 @@ end)
 script.on_init(function ()
     -- initialise player_info table
     global.player_info = {}
+    global.settings = {
+        reach = settings.global[settings_prefix.."circles"].value,
+        reachable = settings.global[settings_prefix.."reachable"].value,
+        burn = settings.global[settings_prefix.."burn"].value,
+        craft = settings.global[settings_prefix.."craft"].value,
+        craftable = settings.global[settings_prefix.."craftable"].value,
+        output = settings.global[settings_prefix.."output"].value,
+        speed_boost = settings.global[settings_prefix.."speed_boost"].value,
+        range = settings.global[settings_prefix.."reachable-range"].value,
+        skip = settings.global[settings_prefix.."skip-tick"].value,
+    }
 
     -- build gui for all existing players
     for player_index, _ in pairs(game.players) do
@@ -658,19 +838,40 @@ end)
 
 script.on_load(function ()
     setup_tasklist()
-    ---@diagnostic disable
-    reach = settings.global["tas-reach"].value
-    reachable = settings.global["tas-reachable"].value
-    burn = settings.global["tas-burn"].value
-    craft = settings.global["tas-craft"].value
-    craftable = settings.global["tas-craftable"].value
-    output = settings.global["tas-output"].value
-    reachable_range = settings.global["tas-reachable-range"].value
-    ---@diagnostic enable
+    local interface = remote.interfaces["DunRaider-TAS"]
+    for player_info, _ in pairs(global.player_info) do
+        local refs = global.player_info[player_info].refs
+        if interface then
+            local state = interface.get_tas_state and remote.call("DunRaider-TAS", "get_tas_state") or {is_running = false}
+            refs.release_button.enabled = interface.release
+            refs.skip_button.enabled = interface.skip
+            refs.release_button.style = state.is_running and "game_speed_selected_slot_sized_button" or "slot_sized_button"
+        else
+            refs.release_button.enabled = false
+            refs.skip_button.enabled = false
+        end
+    end
 end)
 
 script.on_event(defines.events.on_player_created, function(event)
     build_gui(event.player_index)
+
+    local interface = remote.interfaces["DunRaider-TAS"]
+    if interface then
+        for player_info, _ in pairs(global.player_info) do
+            local refs = global.player_info[player_info].refs
+            refs.tasks.items = scope.steps
+            if refs.release_button and refs.skip_button then
+                refs.release_button.enabled = interface.release
+                refs.skip_button.enabled = interface.skip
+
+                local state = remote.call("DunRaider-TAS", "get_tas_state")
+                if state.is_running then
+                    refs.release_button.style = "game_speed_selected_slot_sized_button"
+                end
+            end
+        end
+    end
 end)
 
 script.on_event(defines.events.on_pre_player_removed, function(event)
@@ -678,9 +879,9 @@ script.on_event(defines.events.on_pre_player_removed, function(event)
 end)
 
 script.on_event(defines.events.on_tick, function(event)
-    if event.tick % skip ~= 0 or 
-        speed > 1.4 or
-        not game or game.players == nil
+    if not game or game.players == nil or
+        event.tick % global.settings.skip ~= 0 or
+        speed > 1.4
     then
         return
     end
@@ -688,12 +889,14 @@ script.on_event(defines.events.on_tick, function(event)
     player = game.players[1]
     if player == nil or player.character == nil then return end
 
+    update_speed_boost()
     draw_reachable_range()
     draw_reachable_entities() -- <- has it's own entity list 
-    if not (burn or craft or craftable or output) then return end
+    local refs = global.player_info[player.index].refs.settings
+    if not (global.settings.burn or global.settings.craft or global.settings.craftable or global.settings.output) then return end
     local entities = player.surface.find_entities_filtered{
         position = player.position,
-        radius = player.reach_distance + reachable_range,
+        radius = player.reach_distance + global.settings.range,
         force = player.force
     }
 
@@ -740,13 +943,34 @@ script.on_configuration_changed(function (param1)
     setup_tasklist()
 end)
 
-local function defines_to_string(i)
-    if i == defines.inventory.assembling_machine_input or i == defines.inventory.lab_input or i == defines.inventory.rocket_silo_input then
-        return "input"
-    elseif i == defines.inventory.assembling_machine_output then return "output"
-    elseif i == defines.inventory.fuel then return "fuel"
-    elseif i == defines.inventory.chest then return "inventory"
-    else return tostring(i)
+local function defines_to_string(i, entity_name)
+    local defines_inventory = {
+        "fuel",
+        "input",
+        "output",
+        "modules",
+        "armor",
+        "burnt result",
+        "vehicle",
+        "trash",
+        chest = {
+            "chest",
+        },
+        lab = { },
+        mining_drill = { },
+        beacon = {
+            "modules"
+        }
+    }
+    defines_inventory.lab[3] = "modules"
+    defines_inventory.mining_drill[2] = "modules"
+
+    if entity_name and defines_inventory[entity_name] and defines_inventory[entity_name][i] then
+        return defines_inventory[entity_name][i]
+    elseif defines_inventory[i] then
+        return defines_inventory[i]
+    else
+        tostring(i)
     end
 end
 
@@ -761,49 +985,88 @@ local direction_strings = {
     "northwest"
 }
 local function direction_to_string(i)
-    return direction_strings[i+1]
+    return direction_strings[i+1] or "north"
 end
+
+local step_types = {
+    walk = {pos = 3,},
+    pick = {dur = 3,},
+    put = {pos = 3, item = 4, amount = 5, inv = 6,},
+    take = {pos = 3, item = 4, amount = 5, inv = 6,},
+    craft = {item = 4, amount = 3,},
+    build = {pos = 3, item = 4, dir = 5,},
+    mine = {pos = 3, amount = 4,},
+    recipe = {pos = 3, item = 4,},
+    drop  = {pos = 3, item = 4,},
+    filter = {pos = 3, item = 4,},
+    limit = {pos = 3, amount = 4,},
+    tech = {item = 3,},
+    priority = {pos = 3,},
+    launch = {pos = 3,},
+    rotate = {pos = 3,},
+    save = {item = 3},
+    start = {},
+    stop = {},
+    pause = {},
+    speed = {amount = 3},
+    idle = {dur = 3},
+    ["cancel crafting"] = {item = 4, amount = 3}
+    --break = {},
+}
 
 ---converts a step into a printable sting
 local function step_to_print(step)
-    local n = step[2]
-    local extra = ""
-    if n == "walk" then
-        extra = string.format("to [gps=%.2f,%.2f]", step[3][1], step[3][2])
-    elseif n == "pick" then
-        n = "pick up"
-        --extra = string.format("at [gps=%f,%f]", step[3][1], step[3][2])
-    elseif n == "put" or n == "take" then
-        extra = string.format("%s [item=%s] at [gps=%.1f,%.1f] %s", amount(step[5]), step[4], step[3][1], step[3][2], defines_to_string(step[6]))
-    elseif n == "craft" then
-        extra = string.format("%s [item=%s]", amount(step[3]), step[4])
-    elseif n == "build" then
-        extra = string.format("[item=%s] [gps=%.1f,%.1f] %s", step[4], step[3][1], step[3][2], direction_to_string(step[5]))
-    elseif n == "mine" then --try to see if there is an entity
-        extra = string.format("area [gps=%.2f,%.2f] for %d ticks", step[3][1], step[3][2], step[4])
-    elseif n == "recipe" then
-        extra = string.format("set [recipe=%s] at [gps=%.1f,%.1f]", step[4], step[3][1], step[3][2])
-    elseif n == "drop" then
-        extra = string.format("item [item=%s] at [gps=%.1f,%.1f]", step[4], step[3][1], step[3][2])
-    elseif n == "filter" then
-        extra = string.format("[item=%s] at [gps=%.1f,%.1f]", step[4], step[3][1], step[3][2])
-    elseif n == "limit" then
-        extra = string.format("to %d slots at [gps=%.1f,%.1f]", step[4], step[3][1], step[3][2])
-    elseif n == "tech" then
-        n = "research"
-        extra = string.format("[technology=%s]",step[3])
-    elseif n == "priority" then
-        extra = string.format("in:%s, out:%s at [gps=%.1f,%.1f]", step[4], step[5], step[3][1], step[3][2])
-    elseif n == "launch" then
-        extra = string.format("[gps=%d,%d]", step[3][1], step[3][2])
-    elseif n == "rotate" then
-        if step[4] then n = "counter-rotate" else n = "rotate" end
-        extra = string.format("[gps=%.1f,%.1f]", step[3][1], step[3][2])
-    elseif n == "save" or n == "start" or n == "stop" or n == "pause" or n == "game_speed" or n == "idle" then
-        extra = string.format("%s", step[3])
+    if step[2] then
+        local t = step_types[step[2]]
+        local var = {
+            pos = t.pos and {x = step[t.pos][1], y = step[t.pos][2]},
+            item = t.item and step[t.item],
+            amount = t.amount and amount(step[t.amount]) or t.dur and step[t.dur],
+            dir = t.dir and direction_to_string(step[t.dir]),
+            inv = t.inv and defines_to_string(step[t.inv]),
+        }
+        if var.pos and step[2] ~= "mine" then
+            local entities = game.surfaces[1].find_entities_filtered{
+                position = var.pos,
+                --radius = player.reach_distance + global.settings.range,
+                force = player.force,
+                limit = 1,
+            }
+            var.entity = entities and entities[1]
+        elseif var.pos then
+            local entities = game.surfaces[1].find_entities_filtered{
+                position = var.pos,
+                --radius = player.reach_distance + global.settings.range,
+                --force = {"player", "neutral" },
+                name = {"highlight-box", "flare"},
+                limit = 1,
+                invert = true,
+            }
+            var.entity = entities and entities[1]
+        end
+        if t == step_types.save and not game.is_multiplayer() then
+            var.item = "_autosave-"..var.item
+        elseif t == step_types.priority then
+            return {"tas-print-step.priority", var.pos.x, var.pos.y,
+                step[4], step[5],
+                var.entity and "[entity="..var.entity.name.."]" or "at area"}
+        elseif t == step_types.rotate then
+            return {"tas-print-step.rotate", var.pos.x, var.pos.y,
+                step[4] and "tas_helper_rotate_anticlockwise" or "tas_helper_rotate_clockwise",
+                var.entity and "[entity="..var.entity.name.."]" or "at area"}
+        end
+        return {"tas-print-step."..step[2],
+            var.pos and var.pos.x or 0, var.pos and var.pos.y or 0, --1,2
+            var.item   or "", --3
+            var.amount or "", --4
+            var.dir    or "", --5
+            var.inv    or "", --6
+            var.entity and "[entity="..var.entity.name.."]" or "at area", --7
+        }
+    else
+        return ""
     end
 
-    return string.format("task: [%d, %d] - %s %s", step[1][1], step[1][2], n, extra)
 end
 
 ---@param event EventData.on_gui_selection_state_changed
@@ -812,15 +1075,18 @@ local function select_task(event)
     local element_ = event.element
     local step = step_list[element_.selected_index + (scope.start - 1)]
 
-    player_.print(string.format("step: %d, %s", element_.selected_index + (scope.start - 1), step_to_print(step)))
+    local p = step_to_print(step)
+    player_.print({"tas-print-step.description_step", element_.selected_index + (scope.start - 1), p})
 
     local type = step[2]
-    if type == "walk" or
+    if type == "take" or type == "put" or
+        type == "walk" or
         type == "build" or
-        type == "take" or
-        type == "put" or
+        type == "drop" or
+        type == "limit" or type == "filter" or type == "priority" or type == "launch" or type == "recipe" or
         type == "rotate" or type == "counter-rotate"
     then
+        --TODO convert to highlight box
         if player_.character and player_.character.surface then
             player_.character.surface.create_entity{
                 name = "flare",
@@ -833,6 +1099,72 @@ local function select_task(event)
         end
     end
 end
+
+script.on_event(defines.events.on_lua_shortcut, function(event)
+    if event.prototype_name == "t-tas-helper-toggle-gui" then
+        toggle_gui(event)
+    elseif event.prototype_name == "t-tas-helper-toggle-editor" then
+        toggle_editor(event)
+    end
+end)
+
+---@param event EventData.on_gui_click
+local function toggle_settings(event)
+    global.settings_frame.visible = not global.settings_frame.visible
+
+    local player_index = event.player_index
+    local refs = global.player_info[player_index].refs
+    local settings_window_width = 220
+
+    local location = refs.main_frame.location
+    if location.x + math.floor((gui_width + settings_window_width) * player.display_scale) < player.display_resolution.width then
+        -- position settings to the right of the helper window
+        location.x = location.x + math.floor(gui_width * player.display_scale)
+    else
+        -- position settings to the left
+        location.x = location.x - math.floor(settings_window_width * player.display_scale)
+    end
+    global.settings_frame.location = location
+end
+
+local function editor()
+    if player then player.toggle_map_editor() end
+end
+local function toggle_release_resume()
+    local interface = remote.interfaces["DunRaider-TAS"]
+    local refs = global.player_info and global.player_info[1] and global.player_info[1].refs or nil
+    local btn = refs and refs.release_button or nil
+    if btn and interface then
+        if interface.release and btn.style.name == "game_speed_selected_slot_sized_button" then
+            remote.call("DunRaider-TAS", "release")
+            if global.current_highlight_box then global.current_highlight_box.destroy{} end
+        elseif interface.resume and btn.style.name == "slot_sized_button" then
+            remote.call("DunRaider-TAS", "resume")
+        end
+    end
+end
+local function skip_c()
+    if remote.interfaces["DunRaider-TAS"] and remote.interfaces["DunRaider-TAS"].skip then
+        remote.call("DunRaider-TAS", "skip", 1)
+    end
+end
+
+local has_main_frame_moved = nil
+script.on_event(defines.events.on_gui_location_changed, function (event)
+    for index, player_index in pairs(global.player_info) do
+        if event.element == player_index.refs.main_frame then
+            has_main_frame_moved = {x = event.element.location.x, y = event.element.location.y}
+        end
+    end
+end)
+
+script.on_nth_tick(59, function (param1)
+    if has_main_frame_moved then
+        settings.global[settings_prefix.."x"], settings.global[settings_prefix.."y"] =
+            {value = has_main_frame_moved.x}, {value = has_main_frame_moved.y}
+        has_main_frame_moved = nil
+    end
+end)
 
 script.on_event(defines.events.on_gui_selection_state_changed, function(event)
     local player_index = event.player_index
@@ -847,48 +1179,108 @@ script.on_event(defines.events.on_gui_selection_state_changed, function(event)
     end
 end)
 
-script.on_event(defines.events.on_lua_shortcut, function(event)
-    if event.prototype_name == "t-tas-helper-toggle-gui" then
-        toggle_gui(event)
-    elseif event.prototype_name == "t-tas-helper-toggle-editor" then
-        toggle_editor(event)
+local function handle_setting_toggled(event)
+    local checkboxes = {
+        reachable = global.elements.settings.show_reachable,
+        craft = global.elements.settings.show_craft,
+        burn = global.elements.settings.show_burn,
+        craftable = global.elements.settings.show_craftable,
+        output = global.elements.settings.show_output,
+        speed_boost = global.elements.settings.speed_boost,
+        circles = global.elements.settings.show_circles,
+    }
+    if checkboxes.circles == event.element then
+        local element = checkboxes.circles
+        settings.global[settings_prefix.."circles"] = {value = element.state}
+        global.settings["circles"] = element.state
+        if id ~= 0 then
+            rendering.destroy(id)
+            id = 0
+        end
+        if id2 ~= 0 then
+            rendering.destroy(id2)
+            id2 = 0
+        end
     end
-end)
+    for name, element in pairs(checkboxes) do
+        if element == event.element then
+            settings.global[settings_prefix..name] = {value = element.state}
+            global.settings[name] = element.state
+            break
+        end
+    end
+end
 
-local function editor()
-    if player then player.toggle_map_editor() end
-end
-local function release()
-    if remote.interfaces["DunRaider-TAS"] and remote.interfaces["DunRaider-TAS"].release then
-        remote.call("DunRaider-TAS", "release")
+local function handle_setting_changed(event)
+    local integerboxes = {
+        ["skip-tick"] = global.elements.settings.skip_tick.textfield,
+        ["reachable-range"] = global.elements.settings.reachable_range.textfield,
+    }
+    for name, element in pairs(integerboxes) do
+        local value = tonumber(element.text)
+        if element == event.element and (
+            (name=="skip-tick" and value >= skip_tick_limit.min and value <= skip_tick_limit.max) or
+            (name=="reachable-range" and value >= reachable_range_limit.min and value <= reachable_range_limit.max))
+        then
+            settings.global[settings_prefix..name] = {value = element.text}
+            global.settings[name=="skip-tick" and "skip" or name=="reachable-range" and "range"] = value
+            break
+        end
     end
 end
-local function resume()
-    if remote.interfaces["DunRaider-TAS"] and remote.interfaces["DunRaider-TAS"].resume then
-        remote.call("DunRaider-TAS", "resume")
-    end
-end
-local function skip_c()
-    if remote.interfaces["DunRaider-TAS"] and remote.interfaces["DunRaider-TAS"].skip then
-        remote.call("DunRaider-TAS", "skip", 1)
-    end
-end
-
 
 script.on_event(defines.events.on_gui_click, function(event)
     local player_index = event.player_index
     local refs = global.player_info[player_index].refs
     local handlers = {
+        [refs.tasks] = select_task,
         [refs.t_main_frame_close_button] = toggle_gui,
         [refs.teleport_button] = teleport,
         [refs.editor_button] = editor,
-        [refs.release_button] = release,
-        [refs.resume_button] = resume,
+        [refs.release_button] = toggle_release_resume,
         [refs.skip_button] = skip_c,
+        [refs.toggle_options_button] = toggle_settings,
+        [refs.close_options_button] = toggle_settings,
     }
     for element, handler in pairs(handlers) do
         if event.element == element then
             handler(event)
+        end
+    end
+end)
+
+script.on_event(defines.events.on_gui_checked_state_changed, function (event)
+    local player_index = event.player_index
+    local refs = global.player_info[player_index].refs
+    local handlers = {
+        [refs.settings.circles] = handle_setting_toggled,
+        [refs.settings.reachable] = handle_setting_toggled,
+        [refs.settings.craft] = handle_setting_toggled,
+        [refs.settings.burn] = handle_setting_toggled,
+        [refs.settings.craftable] = handle_setting_toggled,
+        [refs.settings.burn] = handle_setting_toggled,
+        [refs.settings.output] = handle_setting_toggled,
+        [refs.settings.speed_boost] = handle_setting_toggled,
+    }
+    for element, handler in pairs(handlers) do
+        if event.element == element then
+            handler(event)
+        end
+    end
+end)
+
+script.on_event(defines.events.on_gui_text_changed, function (event)
+    if tonumber (event.text ) then
+        local player_index = event.player_index
+        local refs = global.player_info[player_index].refs
+        local handlers = {
+            [refs.settings.skip] = handle_setting_changed,
+            [refs.settings.range] = handle_setting_changed,
+        }
+        for element, handler in pairs(handlers) do
+            if event.element == element then
+                handler(event)
+            end
         end
     end
 end)
