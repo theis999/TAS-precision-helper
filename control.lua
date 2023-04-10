@@ -757,10 +757,12 @@ local function setup_tasklist()
             remote.call("DunRaider-TAS", "get_tas_step_change_id"),
             handle_task_change
         )
-        script.on_event(
+        if interface.get_tas_state_change_id then
+            script.on_event(
             remote.call("DunRaider-TAS", "get_tas_state_change_id"),
-            handle_state_change
-        )
+                handle_state_change
+            )
+        end
     end
 end
 
@@ -865,7 +867,7 @@ script.on_event(defines.events.on_player_created, function(event)
                 refs.release_button.enabled = interface.release
                 refs.skip_button.enabled = interface.skip
 
-                local state = remote.call("DunRaider-TAS", "get_tas_state")
+                local state = interface.get_tas_state and remote.call("DunRaider-TAS", "get_tas_state") or {is_running = false}
                 if state.is_running then
                     refs.release_button.style = "game_speed_selected_slot_sized_button"
                 end
