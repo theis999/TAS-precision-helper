@@ -278,13 +278,13 @@ local function draw_craftable(entity)
         time = (1-entity.crafting_progress + count) * rec.energy / entity.crafting_speed
     end
     local text
-    if time < 1 then text = math.floor(time*60) .. "t" else text = math.floor(time) .. "s" end --if less than 1 second
+    if time < 2 then text = math.floor(time*60) else text = math.floor(time) end
 
     rendering.draw_text{
         text = text,
         surface = entity.surface,
         target = {entity.bounding_box.left_top.x, entity.bounding_box.right_bottom.y -0.5}, --left bottom
-        color = {1,1,1,1},
+        color = time == 0 and {1,0,0,1} or time < 2 and {1,1,0,1} or {1,1,1,1},
         time_to_live = global.settings.skip + 1
     }
 
