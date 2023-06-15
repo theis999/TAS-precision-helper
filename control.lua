@@ -236,18 +236,19 @@ local function draw_burn(entity)
         fuel_remain = fuel_remain + stack_ent.fuel_value * count
     end
 
-    local burner_time
+    local burner_time_raw
     if entity.prototype.energy_usage == nil then
-        burner_time = math.floor((entity.burner.remaining_burning_fuel + fuel_remain) / entity.prototype.max_energy_usage / 60)
+        burner_time_raw = math.floor((entity.burner.remaining_burning_fuel + fuel_remain) / entity.prototype.max_energy_usage)
     else
-        burner_time = math.floor((entity.burner.remaining_burning_fuel + fuel_remain) / entity.prototype.energy_usage / 60)
+        burner_time_raw = math.floor((entity.burner.remaining_burning_fuel + fuel_remain) / entity.prototype.energy_usage)
     end
+    local burner_time = math.floor(burner_time_raw / 60)
 
     rendering.draw_text{
-        text = burner_time .. "s",
+        text = burner_time_raw > 60 and burner_time or burner_time_raw,
         surface = entity.surface,
         target = {entity.bounding_box.left_top.x, entity.bounding_box.right_bottom.y - 0.5},
-        color = {1,1,1,1},
+        color = burner_time_raw > 60 and {1,1,1,1} or {1,0,0,1},
         time_to_live = global.settings.skip + 1
     }
 end
