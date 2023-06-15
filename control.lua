@@ -397,10 +397,10 @@ local function build_gui(player_index)
     do
         local title_bar = main_frame.add{ type = "flow", direction = "horizontal", name = "title_bar", }
         title_bar.drag_target = main_frame
-        title_bar.add{ type = "sprite", sprite = "tas_helper_icon"}
+        title_bar.add{ type = "sprite", sprite = "t-tas-helper_icon"}
         title_bar.add{ type = "label", style = "frame_title", caption = " Helper", ignored_by_interaction = true, }
-        title_bar.add{ type = "empty-widget", style = "game_speed_title_bar_draggable_space", ignored_by_interaction = true, }
-        refs.toggle_options_button = title_bar.add{ type = "sprite-button", style = "frame_action_button", sprite = "game_speed_settings_icon_white", hovered_sprite = "game_speed_settings_icon_black", clicked_sprite = "game_speed_settings_icon_black", }
+        title_bar.add{ type = "empty-widget", style = "t_tas_helper_title_bar_draggable_space", ignored_by_interaction = true, }
+        refs.toggle_options_button = title_bar.add{ type = "sprite-button", style = "frame_action_button", sprite = "t_tas_helper_settings_icon_white", hovered_sprite = "t_tas_helper_settings_icon_black", clicked_sprite = "t_tas_helper_settings_icon_black", }
         refs.t_main_frame_close_button = title_bar.add{ type = "sprite-button", style = "frame_action_button", sprite = "utility/close_white", hovered_sprite = "utility/close_black", clicked_sprite = "utility/close_black", }
     end
 
@@ -430,9 +430,9 @@ local function build_gui(player_index)
 
         local title_bar = frame.add{ type = "flow", direction = "horizontal", name = "title_bar", }
         title_bar.drag_target = frame
-        title_bar.add{ type = "sprite", sprite = "tas_helper_icon"}
+        title_bar.add{ type = "sprite", sprite = "t-tas-helper_icon"}
         title_bar.add{ type = "label", style = "frame_title", caption = "Settings", ignored_by_interaction = true, }
-        title_bar.add{ type = "empty-widget", style = "tas_helper_title_bar_draggable_space", ignored_by_interaction = true, }
+        title_bar.add{ type = "empty-widget", style = "t_tas_helper_title_bar_draggable_space", ignored_by_interaction = true, }
         local close_options_button = title_bar.add{ type = "sprite-button", style = "frame_action_button", sprite = "utility/close_white", hovered_sprite = "utility/close_black", clicked_sprite = "utility/close_black", }
         refs.close_options_button = close_options_button
 
@@ -455,13 +455,13 @@ local function build_gui(player_index)
         settings.add{ type = "line" }
 
         settings.add{ type = "flow", direction = "horizontal", name = "skip_tick", }
-        settings.skip_tick.add{ type = "label", caption = "Skip tick [img=info]: ", tooltip = "something about ticks", name = "label" }
+        settings.skip_tick.add{ type = "label", caption = "Skip tick [img=info]: ", tooltip = "The number of ticks between processing\nLower numbers gives better accuracy\nHigher numbers gives better performance", name = "label" }
         settings.skip_tick.add{ type = "empty-widget", }.style.horizontally_stretchable = true
         settings.skip_tick.add{ type = "textfield", style = "very_short_number_textfield", text = setting("skip-tick"), numeric = true, name = "textfield", }
         settings.skip_tick.textfield.style.horizontal_align = "right"
 
         settings.add{ type = "flow", direction = "horizontal", name = "reachable_range", }
-        settings.reachable_range.add{ type = "label", caption = "Reachable range [img=info]: ", tooltip = "something about reach", name = "label" }
+        settings.reachable_range.add{ type = "label", caption = "Reachable range [img=info]: ", tooltip = "How far extra to scan for entities, beyound your reach range", name = "label" }
         settings.reachable_range.add{ type = "empty-widget", }.style.horizontally_stretchable = true
         settings.reachable_range.add{ type = "textfield", style = "very_short_number_textfield", text = setting("reachable-range"), numeric = true, allow_negative = true, name = "textfield", }
         settings.reachable_range.textfield.style.horizontal_align = "right"
@@ -484,10 +484,10 @@ local function build_gui(player_index)
         refs.btn_controls = flow
         local display_flow = flow.add{ type = "flow", direction = "horizontal" }
         --display_flow.add{ type = "label", style = "caption_label", caption = {"t-tas-helper.tas-controls"}, }
-        display_flow.add{ type = "empty-widget", style = "game_speed_horizontal_space", }
-        local controls_flow = flow.add{ type = "flow", style = "game_speed_control_flow", direction = "horizontal", }
+        display_flow.add{ type = "empty-widget", style = "t_tas_helper_horizontal_space", }
+        local controls_flow = flow.add{ type = "flow", style = "t_tas_helper_control_flow", direction = "horizontal", }
         refs.btn_controls_controls_flow = controls_flow
-        controls_flow.add{ type = "empty-widget", style = "game_speed_horizontal_space", }
+        controls_flow.add{ type = "empty-widget", style = "t_tas_helper_horizontal_space", }
         refs.editor_button = controls_flow.add{ type = "sprite-button", style = "slot_sized_button", tooltip = "editor", sprite = "t_tas_controls_editor_icon",}
         refs.release_button = controls_flow.add{ type = "sprite-button", style = "slot_sized_button", tooltip = "release", sprite = "t_tas_controls_release_icon", enabled = false}
         refs.skip_button = controls_flow.add{ type = "sprite-button", style = "slot_sized_button", tooltip = "skip", sprite = "t_tas_controls_skip_icon",}
@@ -497,13 +497,13 @@ local function build_gui(player_index)
         local flow = main_table.add{ type = "flow", direction = "vertical" }
         flow.add{ type = "label", style = "caption_label", caption = "Position", }
         local display_flow_pos = flow.add{ type = "flow", direction = "horizontal" }
-        display_flow_pos.add{ type = "empty-widget", style = "game_speed_horizontal_space", }
+        display_flow_pos.add{ type = "empty-widget", style = "t_tas_helper_horizontal_space", }
         refs.current_position = display_flow_pos.add{ type = "label", caption = "[0 , 0]" }
         refs.teleport_flow = flow
         local display_flow = flow.add{ type = "flow", direction = "horizontal" }
         display_flow.add{ type = "label", style = "caption_label", caption = {"t-tas-helper.teleport"}, }
-        display_flow.add{ type = "empty-widget", style = "game_speed_horizontal_space", }
-        local controls_flow = flow.add{ type = "flow", style = "game_speed_control_flow", direction = "horizontal", }
+        display_flow.add{ type = "empty-widget", style = "t_tas_helper_horizontal_space", }
+        local controls_flow = flow.add{ type = "flow", style = "t_tas_helper_control_flow", direction = "horizontal", }
         refs.teleport_controls_flow = controls_flow
         refs.x_textfield = controls_flow.add(make_textfield_spec("t_tas_helper_number_textfield", player.position.x))
         refs.y_textfield = controls_flow.add(make_textfield_spec("t_tas_helper_number_textfield", player.position.y))
@@ -515,7 +515,7 @@ local function build_gui(player_index)
         local flow = main_table.add{ type = "flow", direction = "vertical" }
         local display_flow = flow.add{ type = "flow", direction = "horizontal" }
         display_flow.add{ type = "label", style = "caption_label", caption = {"t-tas-helper.step-list"}, }
-        display_flow.add{ type = "empty-widget", style = "game_speed_horizontal_space", }
+        display_flow.add{ type = "empty-widget", style = "t_tas_helper_horizontal_space", }
         refs.tasks = flow.add{type = "list-box", style = "t-tas-helper-tasks", items = scope.steps}
     end
 end
@@ -568,6 +568,7 @@ local function toggle_editor(event)
     -- toggle shortcut
     local player_ = game.players[player_index]
     player_.toggle_map_editor()
+    --game.tick_paused = player_.controller_type == defines.controllers.character
     player_.set_shortcut_toggled("t-tas-helper-toggle-editor", player_.controller_type == defines.controllers.editor)
 end
 
@@ -718,7 +719,7 @@ local function handle_state_change(data)
     if data then
         for index, player_info in pairs(global.player_info) do
             if player_info.refs and player_info.refs.release_button then
-                player_info.refs.release_button.style = data.is_running and "game_speed_selected_slot_sized_button" or "slot_sized_button"
+                player_info.refs.release_button.style = data.is_running and "t_tas_helper_selected_slot_sized_button" or "slot_sized_button"
                 player_info.refs.release_button.tooltip = data.is_running and "release" or "resume"
             end
         end
@@ -809,7 +810,7 @@ script.on_event(defines.events.on_player_toggled_map_editor, function (event)
         global.player_info[event.player_index].refs.editor_button
     then
         global.player_info[event.player_index].refs.editor_button.style =
-            game.players[event.player_index].controller_type == defines.controllers.editor and "game_speed_selected_slot_sized_button" or "slot_sized_button"
+            game.players[event.player_index].controller_type == defines.controllers.editor and "t_tas_helper_selected_slot_sized_button" or "slot_sized_button"
     end
 end)
 
@@ -847,7 +848,7 @@ script.on_load(function ()
             local state = interface.get_tas_state and remote.call("DunRaider-TAS", "get_tas_state") or {is_running = false}
             refs.release_button.enabled = interface.release
             refs.skip_button.enabled = interface.skip
-            refs.release_button.style = state.is_running and "game_speed_selected_slot_sized_button" or "slot_sized_button"
+            refs.release_button.style = state.is_running and "t_tas_helper_selected_slot_sized_button" or "slot_sized_button"
         else
             refs.release_button.enabled = false
             refs.skip_button.enabled = false
@@ -869,7 +870,7 @@ script.on_event(defines.events.on_player_created, function(event)
 
                 local state = interface.get_tas_state and remote.call("DunRaider-TAS", "get_tas_state") or {is_running = false}
                 if state.is_running then
-                    refs.release_button.style = "game_speed_selected_slot_sized_button"
+                    refs.release_button.style = "t_tas_helper_selected_slot_sized_button"
                 end
             end
         end
@@ -1131,13 +1132,14 @@ end
 
 local function editor()
     if player then player.toggle_map_editor() end
+    --if player and game then game.tick_paused = player.controller_type == defines.controllers.character end
 end
 local function toggle_release_resume()
     local interface = remote.interfaces["DunRaider-TAS"]
     local refs = global.player_info and global.player_info[1] and global.player_info[1].refs or nil
     local btn = refs and refs.release_button or nil
     if btn and interface then
-        if interface.release and btn.style.name == "game_speed_selected_slot_sized_button" then
+        if interface.release and btn.style.name == "t_tas_helper_selected_slot_sized_button" then
             remote.call("DunRaider-TAS", "release")
             if global.current_highlight_box then global.current_highlight_box.destroy{} end
         elseif interface.resume and btn.style.name == "slot_sized_button" then

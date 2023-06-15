@@ -2,7 +2,7 @@ local prefix = "__Theis_tas_helper__"
 local prefix_graphics = prefix .. "/graphics/"
 local styles = data.raw["gui-style"].default
 
-styles["game_speed_title_bar_draggable_space"] = {
+styles["t_tas_helper_title_bar_draggable_space"] = {
     type = "empty_widget_style",
     parent = "draggable_space_header",
     horizontally_stretchable = "on",
@@ -11,12 +11,12 @@ styles["game_speed_title_bar_draggable_space"] = {
     right_margin = 4,
 }
 
-styles["game_speed_horizontal_space"] = {
+styles["t_tas_helper_horizontal_space"] = {
     type = "empty_widget_style",
     horizontally_stretchable = "on",
 }
 
-styles["game_speed_control_flow"] = {
+styles["t_tas_helper_control_flow"] = {
     type = "horizontal_flow_style",
     parent = "horizontal_flow",
     vertical_align = "center",
@@ -66,7 +66,7 @@ data.raw.shortcut["t-tas-helper-toggle-editor"] = {
 data:extend({
     {
         type = "sprite",
-        name = "tas_helper_icon",
+        name = "t-tas-helper_icon",
         filename = prefix_graphics.."cryo-chamber.png",
         position = { 0, 0 },
         size = 256,
@@ -133,7 +133,7 @@ data:extend({
     },
     {
         type = "sprite",
-        name = "game_speed_settings_icon_black",
+        name = "t_tas_helper_settings_icon_black",
         filename = prefix_graphics.."settings-icons.png",
         position = { 0, 0 },
         size = 32,
@@ -141,7 +141,7 @@ data:extend({
     },
     {
         type = "sprite",
-        name = "game_speed_settings_icon_white",
+        name = "t_tas_helper_settings_icon_white",
         filename = prefix_graphics.."settings-icons.png",
         position = { 32, 0 },
         size = 32,
@@ -149,7 +149,7 @@ data:extend({
     },
     {
         type = "sprite",
-        name = "game_speed_play_until",
+        name = "t_tas_helper_play_until",
         filename = prefix_graphics.."play-until.png",
         priority = "medium",
         width = 32,
@@ -160,7 +160,7 @@ data:extend({
     },
     {
         type = "sprite",
-        name = "game_speed_play_until_disabled",
+        name = "t_tas_helper_play_until_disabled",
         filename = prefix_graphics.."play-until-disabled.png",
         priority = "medium",
         width = 32,
@@ -197,7 +197,7 @@ data:extend({
     },
 })
 
-styles["game_speed_selected_slot_sized_button"] = {
+styles["t_tas_helper_selected_slot_sized_button"] = {
     type = "button_style",
     parent = "button",
     default_graphical_set =
