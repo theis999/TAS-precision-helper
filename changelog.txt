@@ -1,9 +1,13 @@
 ---------------------------------------------------------------------------------------------------
-Version: 0.9.4
-Date: ????
-  Changes:
----------------------------------------------------------------------------------------------------
 Version: 1.0.0
+Date: 2023-07-20
+  Changes:
+    - Moved entity painting to separate file
+    - Entity painting is now invariant of distance to the player
+    - Added swap-over values to distinguish between White, red or yellow text. And for showing ticks instead of seconds.
+    - todo
+---------------------------------------------------------------------------------------------------
+Version: 0.9.4
 Date: 2023-06-15
   Changes:
     - Removed "s" from burner timer text

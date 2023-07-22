@@ -1,4 +1,5 @@
 require("util")
+local painter = require "entity-painter"
 
 local id = 0
 local id2 = 0
@@ -197,183 +198,6 @@ local function draw_reachable_entities()
                 draw_on_ground = true
             }
         end
-    end
-end
-
----Draws crafting time left in ticks, of the current craft, for a furnace or assembler
----@param entity LuaEntity
-local function draw_craft(entity)
-    if not global.settings.craft then return end
-    if entity.prototype.type == "furnace" or entity.type == "assembling-machine" then
-        local rec = entity.get_recipe()
-        if rec ~= nil then
-            local ticks_left = math.ceil(60*(1-entity.crafting_progress)*(rec.energy/entity.crafting_speed))
-            if not entity.is_crafting() then ticks_left = 0 end
-            rendering.draw_text{
-                text = ticks_left,
-                surface = entity.surface,
-                target = entity.bounding_box.left_top,
-                color = {1,1,1,1},
-                time_to_live = global.settings.skip + 1
-            }
-        end
-    end
-end
-
----Draws fuel remaining in seconds on a burner entity (furnace, boiler, burner inserter etc.)
----@param entity LuaEntity
-local function draw_burn(entity)
-    if not global.settings.burn then return end
-    local fuel
-    local fuel_remain = 0
-    if  entity.burner == nil then return end
-    fuel = entity.get_fuel_inventory()
-    if  fuel == nil then return end
-
-    local inv = fuel.get_contents()
-    for stack, count in pairs(inv) do
-        local stack_ent = game.item_prototypes[stack]
-        fuel_remain = fuel_remain + stack_ent.fuel_value * count
-    end
-
-    local burner_time_raw
-    if entity.prototype.energy_usage == nil then
-        burner_time_raw = math.floor((entity.burner.remaining_burning_fuel + fuel_remain) / entity.prototype.max_energy_usage)
-    else
-        burner_time_raw = math.floor((entity.burner.remaining_burning_fuel + fuel_remain) / entity.prototype.energy_usage)
-    end
-    local burner_time = math.floor(burner_time_raw / 60)
-
-    rendering.draw_text{
-        text = burner_time_raw > 60 and burner_time or burner_time_raw,
-        surface = entity.surface,
-        target = {entity.bounding_box.left_top.x, entity.bounding_box.right_bottom.y - 0.5},
-        color = burner_time_raw > 60 and {1,1,1,1} or {1,0,0,1},
-        time_to_live = global.settings.skip + 1
-    }
-end
-
----Draws the time an assembler will craft with the current input and the number of craftable items an assembler will produce before it runs out of resources
----@param entity LuaEntity
-local function draw_craftable(entity)
-    if not global.settings.craftable then return end
-    local inv = entity.get_inventory(defines.inventory.assembling_machine_input)
-    if inv == nil or entity.type ~= "assembling-machine" then return end
-    local rec = entity.get_recipe()
-    if rec == nil then return end
-    local count = 999
-    local content = inv.get_contents()
-    for i = 1, #rec.ingredients do
-        if content[rec.ingredients[i].name] then
-            count = math.min(count, math.floor(content[rec.ingredients[i].name] / rec.ingredients[i].amount))
-        else
-            count = 0
-        end
-    end
-
-    local time
-    if entity.crafting_progress == 0 then
-        time = count * rec.energy / entity.crafting_speed
-    else
-        time = (1-entity.crafting_progress + count) * rec.energy / entity.crafting_speed
-    end
-    local text
-    if time < 2 then text = math.floor(time*60) else text = math.floor(time) end
-
-    rendering.draw_text{
-        text = text,
-        surface = entity.surface,
-        target = {entity.bounding_box.left_top.x, entity.bounding_box.right_bottom.y -0.5}, --left bottom
-        color = time == 0 and {1,0,0,1} or time < 2 and {1,1,0,1} or {1,1,1,1},
-        time_to_live = global.settings.skip + 1
-    }
-
-    local color = {1,0,0,1} --red
-    if entity.is_crafting() then
-        count = count + 1
-        color = {1,1,1,1} --shift color to white if crafting
-    end
-
-    rendering.draw_text{
-        text = count,
-        surface = entity.surface,
-        target = {entity.bounding_box.right_bottom.x - 0.5, entity.bounding_box.left_top.y}, --right top
-        color = color,
-        time_to_live = global.settings.skip + 1
-    }
-end
-
----Draws the time left an lab can work and the number of cycles it has left
----@param entity LuaEntity
-local function draw_lab(entity)
-    if not global.settings.craftable then return end
-    local inv = entity.get_inventory(defines.inventory.lab_input)
-    local research = player.force.current_research
-    if inv == nil or research == nil or entity.type ~= "lab" then return end
-    local ing = research.research_unit_ingredients
-    local content = inv.get_contents()
-    local count = 999.9
-    for i = 1, #ing do
-        if content[ing[i].name] then
-            local stack = inv.find_item_stack(ing[i].name)
-            if stack then count = math.min(count, (content[ing[i].name] -1 + stack.durability) / ing[i].amount)
-            else count = 0 end
-        else
-            count = 0
-        end
-    end
-
-    local time = count * research.research_unit_energy / entity.prototype.researching_speed
-    local text
-    if time < 61 then text = math.floor(time) .. "t" else text = math.floor(time/60) .. "s" end
-
-    rendering.draw_text{
-        text = text,
-        surface = entity.surface,
-        target = {entity.bounding_box.left_top.x, entity.bounding_box.right_bottom.y -0.5}, --left bottom
-        color = {1,1,0,1},
-        time_to_live = global.settings.skip + 1
-    }
-
-    rendering.draw_text{
-        text = string.format("%.2f",count),
-        surface = entity.surface,
-        target = {entity.bounding_box.right_bottom.x - 0.85, entity.bounding_box.left_top.y}, --right top
-        color = {1,1,1,1},
-        time_to_live = global.settings.skip + 1
-    }
-end
-
----Draws the number of items ready for pick up
----@param entity LuaEntity
-local function draw_output(entity)
-    if not global.settings.output then return end
-    local count = -1
-    local t = entity.type
-    if t == "assembling-machine" then
-        local inv = entity.get_inventory(defines.inventory.assembling_machine_output)
-        if inv and #inv > 0 then
-            count = inv[1].count--just take the first stack, whatever
-        end
-    elseif t == "furnace" then
-        local inv = entity.get_inventory(defines.inventory.furnace_result)
-        if inv and #inv > 0 then count = inv[1].count else count = 0 end --just take the first stack, whatever
-    elseif t == "container" then
-        local contents = entity.get_inventory(defines.inventory.chest).get_contents()
-        count = 0
-        for k,v in pairs(contents) do
-            count = count + v
-        end
-    end --unhandled defines.inventory.rocket_silo_output
-
-    if count > 0 then
-        rendering.draw_text{
-            text = count,
-            surface = entity.surface,
-            target = {entity.bounding_box.right_bottom.x - 0.5, entity.bounding_box.right_bottom.y - 0.5}, --right bottom
-            color = {1,1,1,1},
-            time_to_live = global.settings.skip + 1
-        }
     end
 end
 
@@ -838,6 +662,7 @@ script.on_init(function ()
 
     --The tas generated mod changes name so we just have to test if it is there
     setup_tasklist()
+    painter.init()
 end)
 
 script.on_load(function ()
@@ -890,6 +715,8 @@ script.on_event(defines.events.on_tick, function(event)
         return
     end
 
+    painter.refresh()
+
     player = game.players[1]
     if player == nil or player.character == nil then return end
 
@@ -897,23 +724,6 @@ script.on_event(defines.events.on_tick, function(event)
     draw_reachable_range()
     draw_reachable_entities() -- <- has it's own entity list 
     local refs = global.player_info[player.index].refs.settings
-    if not (global.settings.burn or global.settings.craft or global.settings.craftable or global.settings.output) then return end
-    local entities = player.surface.find_entities_filtered{
-        position = player.position,
-        radius = player.reach_distance + global.settings.range,
-        force = player.force
-    }
-
-    for i in pairs(entities) do
-        local entity = entities[i]
-        if entity ~= nil then
-            draw_burn(entity)
-            draw_craft(entity)
-            draw_craftable(entity)
-            draw_output(entity)
-            draw_lab(entity)
-        end
-    end
 end)
 
 script.on_nth_tick(11, update_gui_for_all_players)
