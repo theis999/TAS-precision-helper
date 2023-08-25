@@ -5,7 +5,14 @@ Date: 2023-07-20
     - Moved entity painting to separate file
     - Entity painting is now invariant of distance to the player
     - Added swap-over values to distinguish between White, red or yellow text. And for showing ticks instead of seconds.
-    - todo
+    - Added crafting queue timer to the GUI above position
+    - Added mining progress timer as a painting in the world
+    - Fixed some step strings
+    - Added missing step descriptions
+    - Added setting to update settings onload instead of on new world
+    - Changed player position to update every tick instead of 11th tick
+    - Added walk direction to walk step descriptions (when forced either diagonal or straight)
+    - Added tooltips to settings page
 ---------------------------------------------------------------------------------------------------
 Version: 0.9.4
 Date: 2023-06-15

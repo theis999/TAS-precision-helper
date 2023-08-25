@@ -1,8 +1,6 @@
 require("util")
 local painter = require "entity-painter"
 
-local id = 0
-local id2 = 0
 local player
 local steps = {}
 local step_list = {}
@@ -131,8 +129,9 @@ end
 ---Draws two circles indication your range
 local function draw_reachable_range()
     if not global.player_info[1].refs.settings.circles.state then return end
-    if id == 0 then
-        id = rendering.draw_circle{
+    global.circles = global.circles or {id = 0, id2 = 0}
+    if global.circles.id == 0 then
+        global.circles.id = rendering.draw_circle{
             color = {r=0.5,a=0.5},
             width = 2,
             radius = player.reach_distance,
@@ -143,8 +142,8 @@ local function draw_reachable_range()
         }
     end
 
-    if id2 == 0 then
-        id2 = rendering.draw_circle{
+    if global.circles.id2 == 0 then
+        global.circles.id2 = rendering.draw_circle{
             color = {r=0.2, g=0.5,a=0.5},
             width = 2,
             radius = player.resource_reach_distance,
@@ -249,6 +248,15 @@ local function build_gui(player_index)
             return settings.global[prefix..name].value
         end
 
+        local function create_setting_flow(settings, name)
+            local flow = settings.add{ type = "flow", direction = "horizontal", name = name.."_flow"}
+            local checkbox = flow.add{ type = "checkbox", caption = {"gui-caption."..name}, state = setting(name), name = "show_"..name, tooltip = {"gui-tooltip."..name} }
+            flow.add{ type = "empty-widget", }.style.horizontally_stretchable = true
+            local yellow = flow.add{ type = "textfield", style = "very_short_number_textfield", tooltip = {"gui-tooltip."..name.."-yellow-swap"}, text = setting(name.."-yellow-swap"), numeric = true, allow_negative = false, name = name.."_yellow_swap", }
+            local red = flow.add{ type = "textfield", style = "very_short_number_textfield", tooltip = {"gui-tooltip."..name.."-red-swap"}, text = setting(name.."-red-swap"), numeric = true, allow_negative = false, name = name.."_red_swap", }
+            return checkbox, yellow, red
+        end
+
         local frame = screen.add{ type = "frame", direction = "vertical", visible = false, }
         global.settings_frame = frame
         --frame.force_auto_center()
@@ -270,12 +278,25 @@ local function build_gui(player_index)
         global.elements = {settings = settings}
         settings.add{ type = "label", style = "caption_label", caption = "Show", }
         settings.add{ type = "checkbox", caption = "Reach circles", state = setting("circles"), name = "show_circles" }
-        settings.add{ type = "checkbox", caption = "Highlight reachable", state = setting("reachable"), name = "show_reachable" }
-        settings.add{ type = "checkbox", caption = "Crafting timer", state = setting("craft"), name = "show_craft" }
-        settings.add{ type = "checkbox", caption = "Burn timer", state = setting("burn"), name = "show_burn" }
-        settings.add{ type = "checkbox", caption = "Craftable count", state = setting("craftable"), name = "show_craftable" }
-        settings.add{ type = "checkbox", caption = "Output count", state = setting("output"), name = "show_output" }
-        settings.add{ type = "checkbox", caption = "Highlight speed boost", state = setting("speed_boost"), name = "speed_boost" }
+        settings.add{ type = "checkbox", caption = "Highlight speed boost", state = setting("speed_boost"), name = "speed_boost", tooltip={"gui-tooltip.highlight-speedboost"}, }
+
+        settings.add{ type = "flow", direction = "horizontal", name = "reachable_range", }
+        settings.reachable_range.add{ type = "checkbox", caption = "Highlight reachable", state = setting("reachable"), name = "show_reachable", tooltip = {"gui-tooltip.highlight-reachable"}, }
+        settings.reachable_range.add{ type = "empty-widget", }.style.horizontally_stretchable = true
+        settings.reachable_range.add{ type = "textfield", style = "very_short_number_textfield", text = setting("reachable-range"), numeric = true, allow_negative = true, name = "textfield", tooltip = {"gui-tooltip.reachable-range"}}
+        settings.reachable_range.textfield.style.horizontal_align = "right"
+
+        settings.add{ type = "checkbox", caption = "Output count", state = setting("output"), name = "show_output", tooltip={"gui-tooltip.output"}, }
+
+        local crafting_checkbox, crafting_yellow, crafting_red  = create_setting_flow(settings, "crafting")
+        local burn_checkbox, burn_yellow, burn_red = create_setting_flow(settings, "burn")
+        local lab_checkbox, lab_yellow, lab_red = create_setting_flow(settings, "lab")
+
+        settings.add{type = "flow", direction = "horizontal", name = "cycle_flow"}
+        settings.cycle_flow.add{ type = "checkbox", caption = "Show cycle", state = setting("cycle"), name = "show_cycle", tooltip={"gui-tooltip.cycle"}, }
+        settings.cycle_flow.add{ type = "empty-widget", }.style.horizontally_stretchable = true
+        settings.cycle_flow.add{ type = "checkbox", caption = "furnaces", state = setting("cycle_furnace"), name = "show_cycle_furnace", tooltip={"gui-tooltip.cycle-furnace"}, }
+        settings.cycle_flow.add{ type = "checkbox", caption = "miners", state = setting("cycle_miner"), name = "show_cycle_miner", tooltip={"gui-tooltip.cycle-miner"}, }
 
         settings.add{ type = "line" }
 
@@ -285,21 +306,27 @@ local function build_gui(player_index)
         settings.skip_tick.add{ type = "textfield", style = "very_short_number_textfield", text = setting("skip-tick"), numeric = true, name = "textfield", }
         settings.skip_tick.textfield.style.horizontal_align = "right"
 
-        settings.add{ type = "flow", direction = "horizontal", name = "reachable_range", }
-        settings.reachable_range.add{ type = "label", caption = "Reachable range [img=info]: ", tooltip = "How far extra to scan for entities, beyound your reach range", name = "label" }
-        settings.reachable_range.add{ type = "empty-widget", }.style.horizontally_stretchable = true
-        settings.reachable_range.add{ type = "textfield", style = "very_short_number_textfield", text = setting("reachable-range"), numeric = true, allow_negative = true, name = "textfield", }
-        settings.reachable_range.textfield.style.horizontal_align = "right"
+        --settings.reachable_range.add{ type = "label", caption = "Reachable range [img=info]: ", tooltip = "How far extra to scan for entities, beyound your reach range", name = "label" }
 
         refs.settings = {
             circles = global.elements.settings.show_circles,
-            reachable = global.elements.settings.show_reachable,
-            craft = global.elements.settings.show_craft,
-            burn = global.elements.settings.show_burn,
-            craftable = global.elements.settings.show_craftable,
+            craft = crafting_checkbox,
+            craft_yellow_swap = crafting_yellow,
+            craft_red_swap = crafting_red,
+            burn = burn_checkbox,
+            burn_yellow_swap = burn_yellow,
+            burn_red_swap = burn_red,
+            lab = lab_checkbox,
+            lab_yellow_swap = lab_yellow,
+            lab_red_swap = lab_red,
             output = global.elements.settings.show_output,
+            cycle = global.elements.settings.cycle_flow.show_cycle,
+            cycle_furnace = global.elements.settings.cycle_flow.show_cycle_furnace,
+            cycle_miner = global.elements.settings.cycle_flow.show_cycle_miner,
             speed_boost = global.elements.settings.speed_boost,
             skip = global.elements.settings.skip_tick.textfield,
+
+            reachable = global.elements.settings.reachable_range.show_reachable,
             range = global.elements.settings.reachable_range.textfield,
         }
     end
@@ -318,7 +345,13 @@ local function build_gui(player_index)
         refs.skip_button = controls_flow.add{ type = "sprite-button", style = "slot_sized_button", tooltip = "skip", sprite = "t_tas_controls_skip_icon",}
     end
 
-    do --position & teleport 
+    do --crafting timer, position & teleport
+        local crafting_flow = main_table.add{ type = "flow", direction = "vertical", name = "crafting_flow" }
+        crafting_flow.add{ type = "label", style = "caption_label", caption = "Handcrafting time", }
+        local crafting_display_flow = crafting_flow.add{ type = "flow", direction = "horizontal", name = "crafting_display_flow" }
+        crafting_display_flow.add{ type = "empty-widget", style = "t_tas_helper_horizontal_space", }
+        refs.crafting_timer = crafting_display_flow.add{ type = "label", caption = "[0 , 0]", name = "crafting_timer", tooltip = {"gui-tooltip.crafting-timer"} }
+
         local flow = main_table.add{ type = "flow", direction = "vertical" }
         flow.add{ type = "label", style = "caption_label", caption = "Position", }
         local display_flow_pos = flow.add{ type = "flow", direction = "horizontal" }
@@ -348,8 +381,28 @@ end
 ---@param player_index uint
 local function do_update(player_index)
     local refs = global.player_info[player_index].refs
-    local p = game.players[player_index].position
-    refs.current_position.caption = string.format("[ %.2f, %.2f ]", p.x, p.y)
+    local player = game.players[player_index]
+    local position = player.position
+    refs.current_position.caption = string.format("[ %.2f, %.2f ]", position.x, position.y)
+
+    if player.controller_type == defines.controllers.character then
+        if not player.crafting_queue then
+            refs.crafting_timer.caption = "0.00 s  /  0 t,  [0]"
+            return
+        end
+
+        local count = -1
+        local time = 0
+        for key, value in pairs(player.crafting_queue) do
+            local recipe = game.recipe_prototypes[value.recipe]
+            time = time + (recipe.energy * value.count)
+            count = count + value.count
+        end
+        local energy = game.recipe_prototypes[player.crafting_queue[1].recipe].energy
+        time = time - player.crafting_queue_progress * energy + count / 60
+        refs.crafting_timer.caption = string.format("%.2f s  /  %d t,  [%d]", time , math.floor(time * 60), (1-player.crafting_queue_progress) * 60 * energy)
+    end
+    --player
 end
 
 ---@param player_index uint?
@@ -403,7 +456,7 @@ local function teleport(event)
     local refs = global.player_info[event.player_index].refs
     local x = refs.x_textfield.text
     local y = refs.y_textfield.text
-    p.teleport({x, y})
+    p.teleport({x = x, y = y})
 end
 
 ---@param player_index number
@@ -428,7 +481,12 @@ end
 ---@return string
 local function amount(n)
     if n == -1 then return "all"
-    else return tostring(n) end
+    else return tostring(n) .. "x" end
+end
+
+local function duration(n)
+    if n == -1 then return "all"
+    else return "for "..tostring(n) .. "ticks" end
 end
 
 local function position_to_string(position)
@@ -444,6 +502,19 @@ local function format_name(str)
     return str:gsub("^%l", string.upper):gsub("-", " ")
 end
 
+local function format_walk_direction(step)
+    local same_x = step[5] or false
+    local same_y = step[6] or false
+
+    if same_x ~= same_y then
+        return same_x == "same_x" and "↕ " or "↔ "
+    elseif same_x and same_y then
+        return "↗ "
+    else
+        return ""
+    end
+end
+
 ---Converts one entry in steps_ into a string for tasklist -> [task-number]: Taskname taskdetail
 ---@param step table
 ---@return string|table step_line
@@ -453,7 +524,7 @@ local function step_to_string(step)
     if not n then return "" end
     local description
     if n == "walk" then
-        description = {"tas-step.description_walk", position_to_string({x=step[3][1], y=step[3][2]})}
+        description = {"tas-step.description_walk", position_to_string({x=step[3][1], y=step[3][2]}), format_walk_direction(step)}
     elseif n == "put" or n == "take" then
         description = {"tas-step.description_"..n, amount(step[5]), step[4], position_to_string({x=step[3][1], y=step[3][2]})}
     elseif n == "craft" then
@@ -461,7 +532,7 @@ local function step_to_string(step)
     elseif n == "build" then
         return {"tas-step.description_step", step[1][1], {"tas-step.description_build", step[4], position_to_string({x=step[3][1], y=step[3][2]})}}
     elseif n == "mine" then
-        description = {"tas-step.description_mine", position_to_string({x=step[3][1], y=step[3][2]})}
+        description = {"tas-step.description_mine", position_to_string({x=step[3][1], y=step[3][2]}), duration(step[4])}
     elseif n == "recipe" then
         description = {"tas-step.description_recipe", step[4], position_to_string({x=step[3][1], y=step[3][2]})}
     elseif n == "drop" then
@@ -475,7 +546,7 @@ local function step_to_string(step)
     elseif n == "priority" then
         description = {"tas-step.description_priority", step[4], step[5], position_to_string({x=step[3][1], y=step[3][2]})}
     elseif n == "pick" then
-        description = {"tas-step.description_pickup", amount(step[3])}
+        description = {"tas-step.description_pickup", tostring(step[3])}
     elseif n == "launch" then
         description = {"tas-step.description_launch", position_to_string({x=step[3][1], y=step[3][2]})}
     elseif n == "cancel crafting" then
@@ -484,8 +555,17 @@ local function step_to_string(step)
         description = {"tas-step.description_rotate", step[4] and "tas_helper_rotate_anticlockwise" or "tas_helper_rotate_clockwise", position_to_string({x=step[3][1], y=step[3][2]})}
     elseif n == "speed" then
         description = {"tas-step.description_speed", step[3]*100 }
-    elseif n == "save" or n == "start" or n == "stop" or n == "pause" or n == "idle" then
+    elseif n == "save" then
+        description = {"tas-step.description_misc", format_name(n), step[3] or ""}
+    elseif n == "start" or n == "stop" or n == "pause" or n == "idle" then
         description = {"tas-step.description_misc", n == "speed" and "Game speed" or format_name(n), step[3] and amount(step[3]) or ""}
+    elseif n == "shoot" then
+        description = {"tas-step.description_shoot", position_to_string({x=step[3][1], y=step[3][2]}), tostring(step[4])}
+    elseif n == "throw" then
+        local l = string.lower(step[4]):gsub(" ", "-")
+        description = {"tas-step.description_throw", position_to_string({x=step[3][1], y=step[3][2]}), l}
+    else
+        description = {"tas-step.description_misc", format_name(n), ""}
     end
     return {"tas-step.description_step", step[1][1], description}
 end
@@ -592,42 +672,6 @@ local function setup_tasklist()
     end
 end
 
-local function change_setting(setting)
-    if true then return end
-    if (setting == "tas-reach") then
-        reach = settings.global["tas-reach"].value
-        if id ~= 0 then
-            rendering.destroy(id)
-            id = 0
-        end
-        if id2 ~= 0 then
-            rendering.destroy(id2)
-            id2 = 0
-        end
-    end
-    if (setting == "tas-reachable") then
-        reachable = settings.global["tas-reachable"].value
-    end
-    if (setting == "tas-burn") then
-        burn = settings.global["tas-burn"].value
-    end
-    if (setting == "tas-craft") then
-        craft = settings.global["tas-craft"].value
-    end
-    if (setting == "tas-craftable") then
-        craftable = settings.global["tas-craftable"].value
-    end
-    if (setting == "tas-output") then
-        output = settings.global["tas-output"].value
-    end
-    if (setting == "tas-speed_boost") then
-        speed_boost = settings.global["tas-speed_boost"].value
-    end
-    if (setting == "tas-reachable-range") then
-        reachable_range = settings.global["tas-reachable-range"].value
-    end
-end
-
 script.on_event(defines.events.on_player_toggled_map_editor, function (event)
     if global.player_info and
         global.player_info[event.player_index] and
@@ -646,8 +690,17 @@ script.on_init(function ()
         reach = settings.global[settings_prefix.."circles"].value,
         reachable = settings.global[settings_prefix.."reachable"].value,
         burn = settings.global[settings_prefix.."burn"].value,
-        craft = settings.global[settings_prefix.."craft"].value,
-        craftable = settings.global[settings_prefix.."craftable"].value,
+        burn_red_swap = settings.global[settings_prefix.."burn-red-swap"].value,
+        burn_yellow_swap = settings.global[settings_prefix.."burn-yellow-swap"].value,
+        crafting = settings.global[settings_prefix.."crafting"].value,
+        crafting_red_swap = settings.global[settings_prefix.."crafting-red-swap"].value,
+        crafting_yellow_swap = settings.global[settings_prefix.."crafting-yellow-swap"].value,
+        lab = settings.global[settings_prefix.."lab"].value,
+        lab_red_swap = settings.global[settings_prefix.."lab-red-swap"].value,
+        lab_yellow_swap = settings.global[settings_prefix.."lab-yellow-swap"].value,
+        cycle = settings.global[settings_prefix.."cycle"].value,
+        cycle_furnace = settings.global[settings_prefix.."cycle_furnace"].value,
+        cycle_miner = settings.global[settings_prefix.."cycle_miner"].value,
         output = settings.global[settings_prefix.."output"].value,
         speed_boost = settings.global[settings_prefix.."speed_boost"].value,
         range = settings.global[settings_prefix.."reachable-range"].value,
@@ -715,10 +768,30 @@ script.on_event(defines.events.on_tick, function(event)
         return
     end
 
+    update_gui_for_all_players()
     painter.refresh()
 
     player = game.players[1]
     if player == nil or player.character == nil then return end
+
+    if player.mining_state.mining then
+        global.tas_mining = global.tas_mining or {pos = player.mining_state.position}
+        local e = player.selected and (player.selected.prototype or game.entity_prototypes[player.selected.prototype_name]).mineable_properties.mining_time or 0
+        local t = string.format("%d", math.floor((1 - player.character_mining_progress) * e / player.character.prototype.mining_speed * 60))
+        if global.tas_mining.id and global.tas_mining.pos.x ~= player.mining_state.position.x and global.tas_mining.pos.y ~= player.mining_state.position.y then
+            rendering.destroy(global.tas_mining.id)
+            global.tas_mining.id = nil
+        elseif global.tas_mining.id then
+            rendering.set_text(global.tas_mining.id, t)
+        else
+            global.tas_mining.id = rendering.draw_text{
+                text = t,
+                surface = player.surface,
+                target = player.mining_state.position,
+                color = {0,1,0},
+            }
+        end
+    end
 
     update_speed_boost()
     draw_reachable_range()
@@ -726,19 +799,20 @@ script.on_event(defines.events.on_tick, function(event)
     local refs = global.player_info[player.index].refs.settings
 end)
 
-script.on_nth_tick(11, update_gui_for_all_players)
-script.on_nth_tick(23, update_game_speed)
-
-script.on_event(defines.events.on_runtime_mod_setting_changed , function(event)
-    local setting = event.setting
-    change_setting(setting)
+script.on_event(defines.events.on_player_mined_entity, function(event)
+    if global.tas_mining and global.tas_mining.id then
+        rendering.destroy(global.tas_mining.id)
+        global.tas_mining = nil
+    end
 end)
+
+script.on_nth_tick(23, update_game_speed)
 
 script.on_event("t-tas-helper-toggle-gui", toggle_gui)
 script.on_event("t-tas-helper-toggle-editor", toggle_editor)
 
 script.on_configuration_changed(function (param1)
-    local pi = true
+    --[[local pi = true
     if global and not global.player_info then
         global.player_info = {}
         pi = false
@@ -754,7 +828,7 @@ script.on_configuration_changed(function (param1)
             build_gui(player_index)
         end
     end
-    setup_tasklist()
+    setup_tasklist()]]
 end)
 
 local function defines_to_string(i, entity_name)
@@ -824,6 +898,8 @@ local step_types = {
     pause = {},
     speed = {amount = 3},
     idle = {dur = 3},
+    shoot = {pos = 3, dur = 4,},
+    throw = {pos = 3, item = 4,},
     ["cancel crafting"] = {item = 4, amount = 3}
     --break = {},
 }
@@ -994,39 +1070,47 @@ script.on_event(defines.events.on_gui_selection_state_changed, function(event)
     end
 end)
 
-local function handle_setting_toggled(event)
+---@param event any
+---@param skip boolean
+local function handle_setting_toggled(event, skip)
     local checkboxes = {
-        reachable = global.elements.settings.show_reachable,
-        craft = global.elements.settings.show_craft,
-        burn = global.elements.settings.show_burn,
-        craftable = global.elements.settings.show_craftable,
+        reachable = global.elements.settings.reachable_range.show_reachable,
+        crafting = global.elements.settings.crafting_flow.show_crafting,
+        burn = global.elements.settings.burn_flow.show_burn,
+        lab = global.elements.settings.lab_flow.show_lab,
         output = global.elements.settings.show_output,
+        cycle = global.elements.settings.cycle_flow.show_cycle,
+        cycle_furnace = global.elements.settings.cycle_flow.show_cycle_furnace,
+        cycle_miner = global.elements.settings.cycle_flow.show_cycle_miner,
         speed_boost = global.elements.settings.speed_boost,
         circles = global.elements.settings.show_circles,
     }
     if checkboxes.circles == event.element then
         local element = checkboxes.circles
-        settings.global[settings_prefix.."circles"] = {value = element.state}
+        if not skip then settings.global[settings_prefix.."circles"] = {value = element.state} end
         global.settings["circles"] = element.state
-        if id ~= 0 then
-            rendering.destroy(id)
-            id = 0
+        global.circles = global.circles or {id = 0, id2 = 0}
+        if global.circles.id ~= 0 then
+            rendering.destroy(global.circles.id)
+            global.circles.id = 0
         end
-        if id2 ~= 0 then
-            rendering.destroy(id2)
-            id2 = 0
+        if global.circles.id2 ~= 0 then
+            rendering.destroy(global.circles.id2)
+            global.circles.id2 = 0
         end
     end
     for name, element in pairs(checkboxes) do
         if element == event.element then
-            settings.global[settings_prefix..name] = {value = element.state}
+            if not skip then settings.global[settings_prefix..name] = {value = element.state} end
             global.settings[name] = element.state
             break
         end
     end
 end
 
-local function handle_setting_changed(event)
+---@param event EventData.on_gui_text_changed
+---@param skip boolean
+local function handle_setting_changed(event, skip)
     local integerboxes = {
         ["skip-tick"] = global.elements.settings.skip_tick.textfield,
         ["reachable-range"] = global.elements.settings.reachable_range.textfield,
@@ -1037,10 +1121,32 @@ local function handle_setting_changed(event)
             (name=="skip-tick" and value >= skip_tick_limit.min and value <= skip_tick_limit.max) or
             (name=="reachable-range" and value >= reachable_range_limit.min and value <= reachable_range_limit.max))
         then
-            settings.global[settings_prefix..name] = {value = element.text}
+            if not skip then settings.global[settings_prefix..name] = {value = element.text} end
             global.settings[name=="skip-tick" and "skip" or name=="reachable-range" and "range"] = value
             break
         end
+    end
+end
+
+---@param event EventData.on_gui_text_changed
+---@param skip boolean
+local function handle_painter_setting_changed(event, skip)
+    local integerboxes = {
+        ["crafting-yellow-swap"] = global.elements.settings.crafting_flow.crafting_yellow_swap,
+        ["crafting-red-swap"] = global.elements.settings.crafting_flow.crafting_red_swap,
+        ["burn-yellow-swap"] = global.elements.settings.burn_flow.burn_yellow_swap,
+        ["burn-red-swap"] = global.elements.settings.burn_flow.burn_red_swap,
+        ["lab-yellow-swap"] = global.elements.settings.lab_flow.lab_yellow_swap,
+        ["lab-red-swap"] = global.elements.settings.lab_flow.lab_red_swap,
+    }
+    for name, element in pairs(integerboxes) do
+        local value = tonumber(element.text)
+        if element == event.element then
+            if not skip then settings.global[settings_prefix..name] = {value = element.text} end
+            global.settings[element.name] = value
+            break
+        end
+
     end
 end
 
@@ -1072,8 +1178,10 @@ script.on_event(defines.events.on_gui_checked_state_changed, function (event)
         [refs.settings.reachable] = handle_setting_toggled,
         [refs.settings.craft] = handle_setting_toggled,
         [refs.settings.burn] = handle_setting_toggled,
-        [refs.settings.craftable] = handle_setting_toggled,
-        [refs.settings.burn] = handle_setting_toggled,
+        [refs.settings.lab] = handle_setting_toggled,
+        [refs.settings.cycle] = handle_setting_toggled,
+        [refs.settings.cycle_furnace] = handle_setting_toggled,
+        [refs.settings.cycle_miner] = handle_setting_toggled,
         [refs.settings.output] = handle_setting_toggled,
         [refs.settings.speed_boost] = handle_setting_toggled,
     }
@@ -1091,6 +1199,12 @@ script.on_event(defines.events.on_gui_text_changed, function (event)
         local handlers = {
             [refs.settings.skip] = handle_setting_changed,
             [refs.settings.range] = handle_setting_changed,
+            [refs.settings.craft_yellow_swap] = handle_painter_setting_changed,
+            [refs.settings.craft_red_swap] = handle_painter_setting_changed,
+            [refs.settings.burn_yellow_swap] = handle_painter_setting_changed,
+            [refs.settings.burn_red_swap] = handle_painter_setting_changed,
+            [refs.settings.lab_yellow_swap] = handle_painter_setting_changed,
+            [refs.settings.lab_red_swap] = handle_painter_setting_changed,
         }
         for element, handler in pairs(handlers) do
             if event.element == element then
@@ -1099,3 +1213,57 @@ script.on_event(defines.events.on_gui_text_changed, function (event)
         end
     end
 end)
+
+local reload_set = settings.startup["q-reload-settings-on-load"].value
+---@param event EventData.on_runtime_mod_setting_changed
+local function change_setting(event)
+    if not reload_set then return end
+
+    if settings_prefix.."circles" == event.setting then
+        global.circles = global.circles or {id = 0, id2 = 0}
+        if global.circles.id ~= 0 then
+            rendering.destroy(global.circles.id)
+            global.circles.id = 0
+        end
+        if global.circles.id2 ~= 0 then
+            rendering.destroy(global.circles.id2)
+            global.circles.id2 = 0
+        end
+    end
+
+    local list = {
+        ["circles"] = global.elements.settings.show_circles,
+        ["output"] = global.elements.settings.show_output,
+        ["burn"] = global.elements.settings.burn_flow.show_burn,
+        ["burn-yellow-swap"] = global.elements.settings.burn_flow.burn_yellow_swap,
+        ["burn-red-swap"] = global.elements.settings.burn_flow.burn_red_swap,
+        ["crafting"] = global.elements.settings.crafting_flow.show_crafting,
+        ["crafting-yellow-swap"] = global.elements.settings.crafting_flow.crafting_yellow_swap,
+        ["crafting-red-swap"] = global.elements.settings.crafting_flow.crafting_red_swap,
+        ["lab"] = global.elements.settings.lab_flow.show_lab,
+        ["lab-yellow-swap"] = global.elements.settings.lab_flow.lab_yellow_swap,
+        ["lab-red-swap"] = global.elements.settings.lab_flow.lab_red_swap,
+        ["cycle"] = global.elements.settings.cycle_flow.show_cycle,
+        ["cycle_furnace"] = global.elements.settings.cycle_flow.show_cycle_furnace,
+        ["cycle_miner"] = global.elements.settings.cycle_flow.show_cycle_miner,
+        ["speed_boost"] = global.elements.settings.speed_boost,
+        ["skip-tick"] = global.elements.settings.skip_tick.textfield,
+        ["reachable"] = global.elements.settings.reachable_range.show_reachable,
+        ["reachable-range"] = global.elements.settings.reachable_range.textfield,
+    }
+
+    for name, node in pairs(list) do
+        if settings_prefix..name == event.setting then
+            if node.type == "textfield" then
+                node.text = "" .. settings.global[event.setting].value
+                handle_painter_setting_changed({element = node}, true)
+                handle_setting_changed({element = node}, true)
+            else
+                node.state = settings.global[event.setting].value
+                handle_setting_toggled({element = node}, true)
+            end
+        end
+    end
+end
+
+script.on_event(defines.events.on_runtime_mod_setting_changed , change_setting)

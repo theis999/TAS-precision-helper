@@ -1,14 +1,9 @@
 local painter = {}
 
 local RED = {1,0,0}
-local GREEN = {0,1,0}
+--local GREEN = {0,1,0}
 local YELLOW = {1,1,0}
 local WHITE = {1,1,1}
-
-local burn_swap_value = 150
-local craft_swap_value_red = 1
-local craft_swap_value_yellow = 60
-local lab_swap_value = 60
 
 local function set_color(node_corner, new_color)
     if node_corner.color ~= new_color then
@@ -43,8 +38,16 @@ function painter.destroy_node(node)
 end
 
 function painter.PaintOutput(node)
-    --if not global.settings.output then return end
     if not (node.is_crafter or node.is_furnace or node.is_chest) then return end
+
+    if not global.settings.output then
+        if node.bottom_right then
+            rendering.destroy(node.bottom_right.id)
+        end
+        node.bottom_right = nil
+        return
+    end
+
     local entity = node.entity
     local count = 0
 
@@ -68,7 +71,7 @@ function painter.PaintOutput(node)
             id = rendering.draw_text{
                 text = count,
                 surface = entity.surface,
-                target = {entity.bounding_box.right_bottom.x - 0.5, entity.bounding_box.right_bottom.y - 0.5}, --right bottom
+                target = {x = entity.bounding_box.right_bottom.x - 0.5, y = entity.bounding_box.right_bottom.y - 0.5}, --right bottom
                 color = WHITE,
             },
         }
@@ -76,8 +79,16 @@ function painter.PaintOutput(node)
 end
 
 function painter.PaintLab(node)
-    --if not global.settings.craftable then return end
     if not node.is_lab then return end
+
+    if not global.settings.lab then
+        if node.bottom_left then rendering.destroy(node.bottom_left.id) end
+        if node.top_right then rendering.destroy(node.top_right.id) end
+        node.bottom_left = nil
+        node.top_right = nil
+        return
+    end
+
     local entity = node.entity
     local inventory = entity.get_inventory(defines.inventory.lab_input)
     local research = game.forces["player"].current_research
@@ -100,8 +111,8 @@ function painter.PaintLab(node)
     end
 
     local time = count * research.research_unit_energy / entity.prototype.researching_speed
-    local text = time <= lab_swap_value and math.floor(time) or math.floor(time/60)
-    local color = time > lab_swap_value and WHITE or time == 0 and RED or YELLOW
+    local text = time <= global.settings.lab_yellow_swap and math.floor(time) or math.floor(time/60)
+    local color = time > global.settings.lab_yellow_swap and WHITE or time <= global.settings.lab_red_swap and RED or YELLOW
 
     if not node.bottom_left then
         node.bottom_left = {
@@ -110,7 +121,7 @@ function painter.PaintLab(node)
             id = rendering.draw_text{
                 text = text,
                 surface = entity.surface,
-                target = {entity.bounding_box.left_top.x, entity.bounding_box.right_bottom.y -0.5}, --left bottom
+                target = {x = entity.bounding_box.left_top.x, y = entity.bounding_box.right_bottom.y -0.5}, --left bottom
                 color = color,
             },
         }
@@ -127,7 +138,7 @@ function painter.PaintLab(node)
             id = rendering.draw_text{
                 text = text,
                 surface = entity.surface,
-                target = {entity.bounding_box.right_bottom.x - 0.85, entity.bounding_box.left_top.y}, --right top
+                target = {x = entity.bounding_box.right_bottom.x - 0.85, y = entity.bounding_box.left_top.y}, --right top
                 color = WHITE,
             },
         }
@@ -137,8 +148,16 @@ function painter.PaintLab(node)
 end
 
 function painter.PaintCraftable(node)
-    --if not global.settings.craftable then return end
     if not node.is_crafter then return end
+
+    if not global.settings.crafting then
+        if node.bottom_left then rendering.destroy(node.bottom_left.id) end
+        if node.top_right then rendering.destroy(node.top_right.id) end
+        node.bottom_left = nil
+        node.top_right = nil
+        return
+    end
+
     local entity = node.entity
     local inventory, recipe = entity.get_inventory(defines.inventory.assembling_machine_input), entity.get_recipe()
     if recipe == nil or inventory == nil then return end
@@ -157,10 +176,10 @@ function painter.PaintCraftable(node)
         ((1-entity.crafting_progress + count) * recipe.energy / entity.crafting_speed)
 
     local time_60 = time * 60
-    local color = time_60 <= craft_swap_value_red and RED or
-        time_60 <= craft_swap_value_yellow and YELLOW or
+    local color = time_60 <= global.settings.crafting_red_swap and RED or
+        time_60 <= global.settings.crafting_yellow_swap and YELLOW or
         WHITE
-    local text = time_60 <= craft_swap_value_yellow and math.floor(time_60) or math.floor(time)
+    local text = time_60 <= global.settings.crafting_yellow_swap and math.floor(time_60) or math.floor(time)
 
     if not node.bottom_left then
         node.bottom_left = {
@@ -169,7 +188,7 @@ function painter.PaintCraftable(node)
             id = rendering.draw_text{
                 text = text,
                 surface = entity.surface,
-                target = {entity.bounding_box.left_top.x, entity.bounding_box.right_bottom.y -0.5}, --left bottom
+                target = {x = entity.bounding_box.left_top.x, y = entity.bounding_box.right_bottom.y -0.5}, --left bottom
                 color = color,
             },
         }
@@ -190,7 +209,7 @@ function painter.PaintCraftable(node)
             id = rendering.draw_text{
                 text = count,
                 surface = entity.surface,
-                target = {entity.bounding_box.right_bottom.x - 0.5, entity.bounding_box.left_top.y}, --right top
+                target = {x = entity.bounding_box.right_bottom.x - 0.5, y = entity.bounding_box.left_top.y}, --right top
                 color = color,
             },
         }
@@ -201,8 +220,14 @@ function painter.PaintCraftable(node)
 end
 
 function painter.PaintBurn(node)
-    --if not global.settings.burn then return end
     if not node.is_burner then return end
+
+    if not global.settings.burn then
+        if node.bottom_left then rendering.destroy(node.bottom_left.id) end
+        node.bottom_left = nil
+        return
+    end
+
     local entity = node.entity
     local fuel = entity.get_fuel_inventory()
     if  fuel == nil then return end
@@ -216,9 +241,12 @@ function painter.PaintBurn(node)
     local burner_time_raw = math.floor(
         (entity.burner.remaining_burning_fuel + fuel_remain) / (entity.prototype.max_energy_usage or entity.prototype.energy_usage)
     )
-    local use_tick = burner_time_raw > burn_swap_value
-    local burner_time = use_tick and math.floor(burner_time_raw / 60) or burner_time_raw
-    local color = use_tick and WHITE or RED
+    local burner_time_sec = burner_time_raw / 60
+    local use_tick = burner_time_raw <= global.settings.burn_yellow_swap
+    local burner_time = math.floor(use_tick and burner_time_raw or burner_time_sec)
+    local color = burner_time_raw <= global.settings.burn_red_swap and RED or
+        use_tick and YELLOW or
+        WHITE
 
     if not node.bottom_left then
         node.bottom_left = {
@@ -227,7 +255,8 @@ function painter.PaintBurn(node)
             id = rendering.draw_text{
                 text = burner_time,
                 surface = entity.surface,
-                target = {entity.bounding_box.left_top.x, entity.bounding_box.right_bottom.y - 0.5},
+                target = {  x = entity.bounding_box.left_top.x,
+                            y = entity.bounding_box.right_bottom.y - 0.5},
                 color = color,
             },
         }
@@ -238,12 +267,38 @@ function painter.PaintBurn(node)
 end
 
 function painter.PaintCycle(node)
-    --if not global.settings.craft then return end
-    if not node.is_crafter and
-        not node.is_furnace
+    if not node.is_crafter and not node.is_furnace and not node.is_miner then return end
+
+    if not global.settings.cycle or
+        node.is_furnace and not global.settings.cycle_furnace or
+        node.is_miner and not global.settings.cycle_miner
     then
+        if node.top_left then rendering.destroy(node.top_left.id) end
+        node.top_left = nil
         return
     end
+
+    if node.is_miner then
+        local ticks_left = math.ceil(60 * (1-node.entity.mining_progress) * (1/node.entity.prototype.mining_speed))
+
+        if node.top_left then
+            set_text(node.top_left, ticks_left)
+        else
+            node.top_left = {
+                text = ticks_left,
+                color = WHITE,
+                id = rendering.draw_text{
+                    text = ticks_left,
+                    surface = node.entity.surface,
+                    target = node.entity.bounding_box.left_top,
+                    color = WHITE,
+                },
+            }
+        end
+
+        return
+    end
+
     local entity = node.entity
     local rec = entity.get_recipe()
 
