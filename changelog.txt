@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.0.0
-Date: 2023-07-20
+Date: 2023-08-25
   Changes:
     - Moved entity painting to separate file
     - Entity painting is now invariant of distance to the player
