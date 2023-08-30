@@ -760,6 +760,15 @@ script.on_event(defines.events.on_pre_player_removed, function(event)
     pcall(destroy_gui,event.player_index)
 end)
 
+local function position_equals(p1, p2)
+    local d = 0.0001
+    local a1 = p1.x < p2.x + d
+    local a2 = p1.x > p2.x - d
+    local b1 = p1.y < p2.y + d
+    local b2 = p1.y > p2.y - d
+    return p1.x < p2.x + d and p1.x > p2.x - d and p1.y < p2.y + d and p1.y > p2.y - d
+end
+
 script.on_event(defines.events.on_tick, function(event)
     if not game or game.players == nil or
         event.tick % global.settings.skip ~= 0 or
@@ -778,9 +787,9 @@ script.on_event(defines.events.on_tick, function(event)
         global.tas_mining = global.tas_mining or {pos = player.mining_state.position}
         local e = player.selected and (player.selected.prototype or game.entity_prototypes[player.selected.prototype_name]).mineable_properties.mining_time or 0
         local t = string.format("%d", math.floor((1 - player.character_mining_progress) * e / player.character.prototype.mining_speed * 60))
-        if global.tas_mining.id and global.tas_mining.pos.x ~= player.mining_state.position.x and global.tas_mining.pos.y ~= player.mining_state.position.y then
+        if global.tas_mining.id and not position_equals(global.tas_mining.pos, player.mining_state.position) then
             rendering.destroy(global.tas_mining.id)
-            global.tas_mining.id = nil
+            global.tas_mining = nil
         elseif global.tas_mining.id then
             rendering.set_text(global.tas_mining.id, t)
         else
