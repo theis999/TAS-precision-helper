@@ -222,7 +222,7 @@ local function build_gui(player_index)
         local title_bar = main_frame.add{ type = "flow", direction = "horizontal", name = "title_bar", }
         title_bar.drag_target = main_frame
         title_bar.add{ type = "sprite", sprite = "t-tas-helper_icon"}
-        title_bar.add{ type = "label", style = "frame_title", caption = " Helper", ignored_by_interaction = true, }
+        title_bar.add{ type = "label", style = "frame_title", caption = " TAS precision", ignored_by_interaction = true, }
         title_bar.add{ type = "empty-widget", style = "t_tas_helper_title_bar_draggable_space", ignored_by_interaction = true, }
         refs.toggle_options_button = title_bar.add{ type = "sprite-button", style = "frame_action_button", sprite = "t_tas_helper_settings_icon_white", hovered_sprite = "t_tas_helper_settings_icon_black", clicked_sprite = "t_tas_helper_settings_icon_black", }
         refs.t_main_frame_close_button = title_bar.add{ type = "sprite-button", style = "frame_action_button", sprite = "utility/close_white", hovered_sprite = "utility/close_black", clicked_sprite = "utility/close_black", }
@@ -1115,6 +1115,7 @@ local function handle_setting_toggled(event, skip)
             break
         end
     end
+    painter.ClearPaint()
 end
 
 ---@param event EventData.on_gui_text_changed
