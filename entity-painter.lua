@@ -148,11 +148,11 @@ end
 
 function painter.PaintCraftable(node)
     local entity = node.entity
-    node.inventory = node.inventory and node.inventory.valid and node.inventory or entity.get_inventory(defines.inventory.assembling_machine_input)
+    node.crafting_inventory = node.crafting_inventory and node.crafting_inventory.valid and node.crafting_inventory or entity.get_inventory(defines.inventory.assembling_machine_input)
     node.recipe = node.recipe and node.recipe.valid and node.recipe or entity.get_recipe()
-    if node.recipe == nil or node.inventory == nil then return end
+    if node.recipe == nil or node.crafting_inventory == nil then return end
     local recipe = node.recipe
-    local inventory = node.inventory
+    local inventory = node.crafting_inventory
 
     local count = 999
     local content = inventory.get_contents()
