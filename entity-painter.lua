@@ -5,6 +5,8 @@ local RED = {1,0,0}
 local YELLOW = {1,1,0}
 local WHITE = {1,1,1}
 
+local tick = 0
+
 local function set_color(node_corner, new_color)
     if node_corner.color ~= new_color then
         node_corner.color = new_color
@@ -148,8 +150,15 @@ end
 
 function painter.PaintCraftable(node)
     local entity = node.entity
-    node.crafting_inventory = node.crafting_inventory and node.crafting_inventory.valid and node.crafting_inventory or entity.get_inventory(defines.inventory.assembling_machine_input)
-    node.recipe = node.recipe and node.recipe.valid and node.recipe or entity.get_recipe()
+
+    if not node.crafting_inventory or not node.crafting_inventory_refresh or not (node.crafting_inventory_refresh + 9 > tick) or not node.crafting_inventory.valid then
+        node.crafting_inventory = entity.get_inventory(defines.inventory.assembling_machine_input)
+        node.crafting_inventory_refresh = node.crafting_inventory and tick or nil
+    end
+    if not node.recipe or not node.recipe_refresh or not (node.recipe_refresh + 9 > tick) or not node.recipe.valid then
+        node.recipe = node.entity.get_recipe()
+        node.recipe_refresh = node.recipe and tick or nil
+    end
     if node.recipe == nil or node.crafting_inventory == nil then return end
     local recipe = node.recipe
     local inventory = node.crafting_inventory
@@ -291,7 +300,10 @@ function painter.PaintCycle(node)
         return
     end
 
-    node.recipe = node.recipe and node.recipe.valid and node.recipe or node.entity.get_recipe()
+    if not node.recipe or not node.recipe_refresh or not (node.recipe_refresh + 15 > tick) or not node.recipe.valid then
+        node.recipe = node.entity.get_recipe()
+        node.recipe_refresh = node.recipe and tick or nil
+    end
 
     local entity = node.entity
 
@@ -328,6 +340,8 @@ function painter.refresh()
     global.craftable_nodes = global.craftable_nodes or {}
     global.cycle_nodes = global.cycle_nodes or {}
     global.output_nodes = global.output_nodes or {}
+
+    tick = game and game.tick or 0
 
     if global.settings.cycle then
         for index, node in pairs(global.cycle_nodes) do
