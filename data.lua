@@ -241,3 +241,4 @@ end
 
 add_hotkey("t-tas-helper-toggle-gui", "CONTROL + P", "", "a")
 add_hotkey("t-tas-helper-toggle-editor", "CONTROL + SHIFT + E", "", "b")
+add_hotkey("t-tas-helper-toggle-editor_tick_pause", "CONTROL + ALT + mouse-wheel-up", "", "b")
