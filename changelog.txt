@@ -1,8 +1,10 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.1.4
-Date: ????
+Date: 2024-08-01
   Changes:
     - Added 'furnace craftable' making it possible to see furnaces with excess input.
+    - Removed reach circles.
+    - Added dependency to character_reach_indicator, replacing reach circles.
 ---------------------------------------------------------------------------------------------------
 Version: 1.1.3
 Date: 2024-08-01

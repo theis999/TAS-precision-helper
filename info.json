@@ -5,5 +5,6 @@
 	"author": "Theis",
 	"factorio_version": "1.1",
 	"contact": "",
-	"description": "Helper mod for developing a TAS in factorio"
+	"description": "Helper mod for developing a TAS in factorio",
+	"dependencies": ["character_reach_indicator"]
 }

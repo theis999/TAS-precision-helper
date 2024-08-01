@@ -39,14 +39,6 @@ data:extend(
   },
   {
     type = "bool-setting",
-    name = prefix.."circles",
-    setting_type = "runtime-global",
-    default_value = true,
-    hidden = true,
-    order = "q1",
-  },
-  {
-    type = "bool-setting",
     name = prefix.."reachable",
     setting_type = "runtime-global",
     default_value = true,

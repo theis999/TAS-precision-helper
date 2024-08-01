@@ -128,35 +128,6 @@ local function update_speed_boost()
     global.speed_boost_data = data
 end
 
----Draws two circles indication your range
-local function draw_reachable_range()
-    if not global.player_info[1].refs.settings.circles.state then return end
-    global.circles = global.circles or {id = 0, id2 = 0}
-    if global.circles.id == 0 then
-        global.circles.id = rendering.draw_circle{
-            color = {r=0.5,a=0.5},
-            width = 2,
-            radius = player.reach_distance,
-            filled = false,
-            target = player.character,
-            surface = player.surface,
-            draw_on_ground = true
-        }
-    end
-
-    if global.circles.id2 == 0 then
-        global.circles.id2 = rendering.draw_circle{
-            color = {r=0.2, g=0.5,a=0.5},
-            width = 2,
-            radius = player.resource_reach_distance,
-            filled = false,
-            target = player.character,
-            surface = player.surface,
-            draw_on_ground = true
-        }
-    end
-end
-
 ---draws bounding boxes on entities in range
 local function draw_reachable_entities()
     if not global.player_info[1].refs.settings.reachable.state then return end
@@ -279,7 +250,6 @@ local function build_gui(player_index)
         settings.style.minimal_width = 180
         global.elements = {settings = settings}
         settings.add{ type = "label", style = "caption_label", caption = "Show", }
-        settings.add{ type = "checkbox", caption = "Reach circles", state = setting("circles"), name = "show_circles" }
         settings.add{ type = "checkbox", caption = "Highlight speed boost", state = setting("speed_boost"), name = "speed_boost", tooltip={"gui-tooltip.highlight-speedboost"}, }
 
         settings.add{ type = "flow", direction = "horizontal", name = "reachable_range", }
@@ -314,7 +284,6 @@ local function build_gui(player_index)
         --settings.reachable_range.add{ type = "label", caption = "Reachable range [img=info]: ", tooltip = "How far extra to scan for entities, beyound your reach range", name = "label" }
 
         refs.settings = {
-            circles = global.elements.settings.show_circles,
             craft = crafting_checkbox,
             craft_yellow_swap = crafting_yellow,
             craft_red_swap = crafting_red,
@@ -697,7 +666,6 @@ script.on_init(function ()
     -- initialise player_info table
     global.player_info = {}
     global.settings = {
-        reach = settings.global[settings_prefix.."circles"].value,
         reachable = settings.global[settings_prefix.."reachable"].value,
         burn = settings.global[settings_prefix.."burn"].value,
         burn_red_swap = settings.global[settings_prefix.."burn-red-swap"].value,
@@ -814,7 +782,6 @@ script.on_event(defines.events.on_tick, function(event)
     end
 
     update_speed_boost()
-    draw_reachable_range()
     draw_reachable_entities() -- <- has it's own entity list 
     local refs = global.player_info[player.index].refs.settings
 end)
@@ -1123,22 +1090,7 @@ local function handle_setting_toggled(event, skip)
         cycle_miner = global.elements.settings.cycle_flow.show_cycle_miner,
         furnace_craftable = global.elements.settings.furnace_flow.show_furnace_craftable,
         speed_boost = global.elements.settings.speed_boost,
-        circles = global.elements.settings.show_circles,
     }
-    if checkboxes.circles == event.element then
-        local element = checkboxes.circles
-        if not skip then settings.global[settings_prefix.."circles"] = {value = element.state} end
-        global.settings["circles"] = element.state
-        global.circles = global.circles or {id = 0, id2 = 0}
-        if global.circles.id ~= 0 then
-            rendering.destroy(global.circles.id)
-            global.circles.id = 0
-        end
-        if global.circles.id2 ~= 0 then
-            rendering.destroy(global.circles.id2)
-            global.circles.id2 = 0
-        end
-    end
     for name, element in pairs(checkboxes) do
         if element == event.element then
             if not skip then settings.global[settings_prefix..name] = {value = element.state} end
@@ -1215,7 +1167,6 @@ script.on_event(defines.events.on_gui_checked_state_changed, function (event)
     local player_index = event.player_index
     local refs = global.player_info[player_index].refs
     local handlers = {
-        [refs.settings.circles] = handle_setting_toggled,
         [refs.settings.reachable] = handle_setting_toggled,
         [refs.settings.craft] = handle_setting_toggled,
         [refs.settings.burn] = handle_setting_toggled,
@@ -1261,20 +1212,7 @@ local reload_set = settings.startup["q-reload-settings-on-load"].value
 local function change_setting(event)
     if not reload_set then return end
 
-    if settings_prefix.."circles" == event.setting then
-        global.circles = global.circles or {id = 0, id2 = 0}
-        if global.circles.id ~= 0 then
-            rendering.destroy(global.circles.id)
-            global.circles.id = 0
-        end
-        if global.circles.id2 ~= 0 then
-            rendering.destroy(global.circles.id2)
-            global.circles.id2 = 0
-        end
-    end
-
     local list = {
-        ["circles"] = global.elements.settings.show_circles,
         ["output"] = global.elements.settings.show_output,
         ["burn"] = global.elements.settings.burn_flow.show_burn,
         ["burn-yellow-swap"] = global.elements.settings.burn_flow.burn_yellow_swap,
