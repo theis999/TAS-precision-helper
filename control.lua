@@ -25,6 +25,8 @@ local scope = {
     steps = {},
 }
 
+local scope_increment = settings.startup["q-scope-increment"].value
+
 local function update_game_speed()
     if game then speed = game.speed end
 end
@@ -564,6 +566,9 @@ local function step_to_string(step)
     elseif n == "throw" then
         local l = string.lower(step[4]):gsub(" ", "-")
         description = {"tas-step.description_throw", position_to_string({x=step[3][1], y=step[3][2]}), l}
+    elseif n == "equip" then
+        local l = string.lower(step[4]):gsub(" ", "-")
+        description = {"tas-step.description_equip", step[5], l, step[3] > 1 and step[3].."x " or step[3]}
     else
         description = {"tas-step.description_misc", format_name(n), ""}
     end
@@ -576,17 +581,18 @@ end
 local function handle_scroll(player_index, to_step)
     local tasks = global.player_info[player_index].refs.tasks
     local scope_changed = false
+    --local scope_increment = 100
 
-    while math.abs(to_step - scope.index) > 100 do
+    while math.abs(to_step - scope.index) > scope_increment do
         scope_changed = true
-        if to_step - scope.index < 0 then scope.index = scope.index - 100
-        else scope.index = scope.index + 100 end
+        if to_step - scope.index < 0 then scope.index = scope.index - scope_increment
+        else scope.index = scope.index + scope_increment end
     end
     if scope_changed then
         scope = {
             index = scope.index,
-            start = math.max(1, scope.index - 100),
-            stop = math.min(#steps, scope.index + 200),
+            start = math.max(1, scope.index - scope_increment),
+            stop = math.min(#steps, scope.index + (2 * scope_increment)),
             steps = {},
         }
         for i = scope.start, scope.stop do
@@ -909,6 +915,7 @@ local step_types = {
     idle = {dur = 3},
     shoot = {pos = 3, dur = 4,},
     throw = {pos = 3, item = 4,},
+    equip = {amount = 3, item = 4,},
     ["cancel crafting"] = {item = 4, amount = 3}
     --break = {},
 }
@@ -977,16 +984,34 @@ local function select_task(event)
     local p = step_to_print(step)
     player_.print({"tas-print-step.description_step", element_.selected_index + (scope.start - 1), p})
 
+    if global.select_task_highlight_boxes then global.select_task_highlight_boxes[1].destroy{} global.select_task_highlight_boxes[2].destroy{} end
+
     local type = step[2]
     if type == "take" or type == "put" or
         type == "walk" or
         type == "build" or
         type == "drop" or
         type == "limit" or type == "filter" or type == "priority" or type == "launch" or type == "recipe" or
-        type == "rotate" or type == "counter-rotate"
+        type == "rotate" or type == "counter-rotate" or 
+        type == "shoot"
     then
-        --TODO convert to highlight box
-        if player_.character and player_.character.surface then
+        local x,y,surface = step[3][1], step[3][2], game.surfaces[1]
+        global.select_task_highlight_boxes = {--TODO convert to highlight box
+            surface.create_entity{
+                name = "highlight-box",
+                position = {0, 0}, -- ignored
+                bounding_box = {{x-0.2,y-0.2},{x+0.2,y+0.2}},
+                box_type = "copy",
+            },
+            surface.create_entity{
+                name = "highlight-box",
+                position = {0, 0}, -- ignored
+                bounding_box = {{x-0.8,y-0.8},{x+0.8,y+0.8}},
+                box_type = "copy",
+            }
+        }
+        --global.select_task_highlight_boxes = select_task_highlight_box
+        --[[if player_.character and player_.character.surface then
             player_.character.surface.create_entity{
                 name = "flare",
                 position = step[3],
@@ -995,7 +1020,7 @@ local function select_task(event)
                 vertical_speed = 0,
                 frame_speed = 120,
             }
-        end
+        end]]
     end
 end
 

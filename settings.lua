@@ -29,6 +29,15 @@ data:extend(
     order = "a2",
   },
   {
+    type = "int-setting",
+    name = "q-scope-increment",
+    setting_type = "startup",
+    default_value = 100,
+    minimum_value = 10,
+    maximum_value = 500,
+    order = "a3",
+  },
+  {
     type = "bool-setting",
     name = prefix.."circles",
     setting_type = "runtime-global",

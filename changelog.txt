@@ -1,7 +1,11 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.1.3
-Date: ????
+Date: 2024-08-01
   Changes:
+    - Added setting "Tasklist scope size", allowing to customize how many steps are shown at a time.
+    - Added equip to understood step types.
+    - Changed the flare that appears after clicking on step in the tasklist to a double highlight box.
+    - Added shoot to the step types that create a marker on the map.
 ---------------------------------------------------------------------------------------------------
 Version: 1.1.2
 Date: 2023-10-02
