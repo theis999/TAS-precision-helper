@@ -9,6 +9,11 @@ local gui_width = settings.startup["q-gui-width"].value
 
 local settings_prefix = "t-tas-helper_"
 
+local player_reach_distance
+local player_resource_reach_distance
+local player_position
+local player_surface
+
 local reachable_range_limit = {
     min = -5,
     max = 100,
@@ -132,26 +137,83 @@ end
 local function draw_reachable_range()
     if not global.player_info[1].refs.settings.circles.state then return end
     global.circles = global.circles or {id = 0, id2 = 0}
+
+    -- Remove existing circles if they exist
+    if global.circles.id ~= 0 then
+        rendering.destroy(global.circles.id)
+        global.circles.id = 0
+    end
+    if global.circles.id2 ~= 0 then
+        rendering.destroy(global.circles.id2)
+        global.circles.id2 = 0
+    end
+
+    player_position = player.position
+    player_reach_distance = player.reach_distance
+    player_resource_reach_distance = player.resource_reach_distance
+    player_surface = player.surface
+
     if global.circles.id == 0 then
-        global.circles.id = rendering.draw_circle{
-            color = {r=0.5,a=0.5},
+        global.circles.id = rendering.draw_circle {
+            color = { r = 0.5, a = 0.5 },
             width = 2,
-            radius = player.reach_distance,
+            radius = player_reach_distance,
             filled = false,
-            target = player.character,
-            surface = player.surface,
+            target = player_position,
+            surface = player_surface,
             draw_on_ground = true
         }
     end
 
     if global.circles.id2 == 0 then
-        global.circles.id2 = rendering.draw_circle{
-            color = {r=0.2, g=0.5,a=0.5},
+        global.circles.id2 = rendering.draw_circle {
+            color = { r = 0.2, g = 0.5, a = 0.5 },
             width = 2,
-            radius = player.resource_reach_distance,
+            radius = player_resource_reach_distance,
             filled = false,
-            target = player.character,
-            surface = player.surface,
+            target = player_position,
+            surface = player_surface,
+            draw_on_ground = true
+        }
+    end
+end
+
+---Draws two circles indication your range
+local function draw_reachable_range_editor()
+    if not player_reach_distance or not player_resource_reach_distance or not player_position or not player_surface then return end
+
+    global.circles = global.circles or { id = 0, id2 = 0 }
+
+    -- Remove existing circles if they exist
+    if global.circles.id ~= 0 then
+        rendering.destroy(global.circles.id)
+        global.circles.id = 0
+    end
+    if global.circles.id2 ~= 0 then
+        rendering.destroy(global.circles.id2)
+        global.circles.id2 = 0
+    end
+
+    if global.circles.id == 0 then
+        global.circles.id = rendering.draw_circle {
+            color = { r = 0.5, a = 0.5 },
+            width = 2,
+            radius = player_reach_distance,
+            filled = false,
+            target = player_position,
+            surface = player_surface,
+            draw_on_ground = true
+        }
+    end
+
+    if global.circles.id2 == 0 then
+        global.circles.id2 = rendering.draw_circle {
+            color = { r = 0.2, g = 0.5, a = 0.5 },
+            width = 2,
+            radius = player_resource_reach_distance,
+            filled = false,
+            target = player_position,
+            surface = player_surface,
             draw_on_ground = true
         }
     end
@@ -449,6 +511,24 @@ local function toggle_editor(event)
     local player_ = game.players[player_index]
     player_.toggle_map_editor()
     --game.tick_paused = player_.controller_type == defines.controllers.character
+    player_.set_shortcut_toggled("t-tas-helper-toggle-editor", player_.controller_type == defines.controllers.editor)
+end
+
+
+local function toggle_editor_tick_pause(event)
+    local player_index = event.player_index
+
+    -- toggle shortcut
+    local player_ = game.players[player_index]
+    player_.toggle_map_editor()
+    game.tick_paused = true
+
+    draw_reachable_range_editor()
+
+    if player and game and player.controller_type == defines.controllers.character then
+        game.ticks_to_run = 1
+    end
+
     player_.set_shortcut_toggled("t-tas-helper-toggle-editor", player_.controller_type == defines.controllers.editor)
 end
 
@@ -789,6 +869,11 @@ script.on_event(defines.events.on_tick, function(event)
     player = game.players[1]
     if player == nil or player.character == nil then return end
 
+    player_position = player.position
+    player_reach_distance = player.reach_distance
+    player_resource_reach_distance = player.resource_reach_distance
+    player_surface = player.surface
+
     if player.mining_state.mining then
         global.tas_mining = global.tas_mining or {pos = player.mining_state.position}
         local e = player.selected and (player.selected.prototype or game.entity_prototypes[player.selected.prototype_name]).mineable_properties.mining_time or 0
@@ -825,6 +910,7 @@ script.on_nth_tick(23, update_game_speed)
 
 script.on_event("t-tas-helper-toggle-gui", toggle_gui)
 script.on_event("t-tas-helper-toggle-editor", toggle_editor)
+script.on_event("t-tas-helper-toggle-editor_tick_pause", toggle_editor_tick_pause)
 
 script.on_configuration_changed(function (param1)
     --[[local pi = true
