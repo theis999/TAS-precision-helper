@@ -300,6 +300,9 @@ local function build_gui(player_index)
         settings.cycle_flow.add{ type = "checkbox", caption = "furnaces", state = setting("cycle_furnace"), name = "show_cycle_furnace", tooltip={"gui-tooltip.cycle-furnace"}, }
         settings.cycle_flow.add{ type = "checkbox", caption = "miners", state = setting("cycle_miner"), name = "show_cycle_miner", tooltip={"gui-tooltip.cycle-miner"}, }
 
+        settings.add{type = "flow", direction = "horizontal", name = "furnace_flow"}
+        settings.furnace_flow.add{ type = "checkbox", caption = "Show furnace craftable", state = setting("furnace_craftable"), name = "show_furnace_craftable", tooltip={"gui-tooltip.furnace-craftable"}, }
+
         settings.add{ type = "line" }
 
         settings.add{ type = "flow", direction = "horizontal", name = "skip_tick", }
@@ -325,6 +328,7 @@ local function build_gui(player_index)
             cycle = global.elements.settings.cycle_flow.show_cycle,
             cycle_furnace = global.elements.settings.cycle_flow.show_cycle_furnace,
             cycle_miner = global.elements.settings.cycle_flow.show_cycle_miner,
+            furnace_craftable = global.elements.settings.furnace_flow.show_furnace_craftable,
             speed_boost = global.elements.settings.speed_boost,
             skip = global.elements.settings.skip_tick.textfield,
 
@@ -707,6 +711,7 @@ script.on_init(function ()
         cycle = settings.global[settings_prefix.."cycle"].value,
         cycle_furnace = settings.global[settings_prefix.."cycle_furnace"].value,
         cycle_miner = settings.global[settings_prefix.."cycle_miner"].value,
+        furnace_craftable = settings.global[settings_prefix.."furnace_craftable"].value,
         output = settings.global[settings_prefix.."output"].value,
         speed_boost = settings.global[settings_prefix.."speed_boost"].value,
         range = settings.global[settings_prefix.."reachable-range"].value,
@@ -1116,6 +1121,7 @@ local function handle_setting_toggled(event, skip)
         cycle = global.elements.settings.cycle_flow.show_cycle,
         cycle_furnace = global.elements.settings.cycle_flow.show_cycle_furnace,
         cycle_miner = global.elements.settings.cycle_flow.show_cycle_miner,
+        furnace_craftable = global.elements.settings.furnace_flow.show_furnace_craftable,
         speed_boost = global.elements.settings.speed_boost,
         circles = global.elements.settings.show_circles,
     }
@@ -1217,6 +1223,7 @@ script.on_event(defines.events.on_gui_checked_state_changed, function (event)
         [refs.settings.cycle] = handle_setting_toggled,
         [refs.settings.cycle_furnace] = handle_setting_toggled,
         [refs.settings.cycle_miner] = handle_setting_toggled,
+        [refs.settings.furnace_craftable] = handle_setting_toggled,
         [refs.settings.output] = handle_setting_toggled,
         [refs.settings.speed_boost] = handle_setting_toggled,
     }
@@ -1281,6 +1288,7 @@ local function change_setting(event)
         ["cycle"] = global.elements.settings.cycle_flow.show_cycle,
         ["cycle_furnace"] = global.elements.settings.cycle_flow.show_cycle_furnace,
         ["cycle_miner"] = global.elements.settings.cycle_flow.show_cycle_miner,
+        ["furnace_craftable"] = global.elements.settings.furnace_flow.show_furnace_craftable,
         ["speed_boost"] = global.elements.settings.speed_boost,
         ["skip-tick"] = global.elements.settings.skip_tick.textfield,
         ["reachable"] = global.elements.settings.reachable_range.show_reachable,
