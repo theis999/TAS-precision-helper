@@ -221,6 +221,53 @@ function painter.PaintCraftable(node)
     end
 end
 
+function painter.PaintFurnaceCraftable(node)
+    local entity = node.entity
+
+    if not node.crafting_inventory or not node.crafting_inventory_refresh or not (node.crafting_inventory_refresh + 9 > tick) or not node.crafting_inventory.valid then
+        node.crafting_inventory = entity.get_inventory(defines.inventory.assembling_machine_input)
+        node.crafting_inventory_refresh = node.crafting_inventory and tick or nil
+    end
+    if not node.recipe or not node.recipe_refresh or not (node.recipe_refresh + 9 > tick) or not node.recipe.valid then
+        node.recipe = node.entity.get_recipe()
+        node.recipe_refresh = node.recipe and tick or nil
+    end
+    if node.recipe == nil or node.crafting_inventory == nil then return end
+    local recipe = node.recipe
+    local inventory = node.crafting_inventory
+
+    local count = 999
+    local content = inventory.get_contents()
+    for i = 1, #recipe.ingredients do
+        local recipe_name = recipe.ingredients[i].name
+        if content[recipe_name] then
+            count = math.min(count, math.floor(content[recipe_name] / recipe.ingredients[i].amount))
+        else
+            count = 0
+        end
+    end
+
+    local color = entity.is_crafting() and WHITE or
+        count > 1 and YELLOW or
+        RED
+
+    if not node.top_right then
+        node.top_right = {
+            text = count,
+            color = color,
+            id = rendering.draw_text{
+                text = count,
+                surface = entity.surface,
+                target = {x = entity.bounding_box.right_bottom.x - 0.5, y = entity.bounding_box.left_top.y}, --right top
+                color = color,
+            },
+        }
+    else
+        set_text(node.top_right, count)
+        set_color(node.top_right, color)
+    end
+end
+
 function painter.PaintBurn(node)
     if not node.fuel or not node.fuel.valid then
         node.fuel = node.entity.get_fuel_inventory()
@@ -340,6 +387,7 @@ function painter.refresh()
     global.craftable_nodes = global.craftable_nodes or {}
     global.cycle_nodes = global.cycle_nodes or {}
     global.output_nodes = global.output_nodes or {}
+    global.furnace_craftable_nodes = global.furnace_craftable_nodes or {}
 
     tick = game and game.tick or 0
 
@@ -397,6 +445,16 @@ function painter.refresh()
             end
         end
     end
+    if global.settings.furnace_craftable then
+        for index, node in pairs(global.furnace_craftable_nodes) do
+            if not node.entity or (not node.entity.valid) then
+                painter.destroy_node(node)
+                global.furnace_craftable_nodes[index] = nil
+            else
+                painter.PaintFurnaceCraftable(node)
+            end
+        end
+    end
 end
 
 ---Clears the paint on each entity on settings toggled
@@ -442,6 +500,12 @@ function painter.ClearPaint()
             node.bottom_right = nil
         end
     end
+    if not global.settings.furnace_craftable then
+        for _, node in pairs(global.furnace_craftable_nodes) do
+            if node.top_right then rendering.destroy(node.top_right.id) end
+            node.top_right = nil
+        end
+    end
 end
 
 ---comment
@@ -480,6 +544,9 @@ local function EntityBuilt(data)
     end
     if node.is_crafter or node.is_furnace or node.is_chest then
         global.output_nodes[entity.unit_number] = node
+    end
+    if node.is_furnace then
+        global.furnace_craftable_nodes[entity.unit_number] = node
     end
 end
 

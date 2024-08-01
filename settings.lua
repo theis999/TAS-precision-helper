@@ -179,6 +179,14 @@ data:extend(
   },
   {
     type = "bool-setting",
+    name = prefix.."furnace_craftable",
+    setting_type = "runtime-global",
+    default_value = false,
+    hidden = true,
+    order = "q10",
+  },
+  {
+    type = "bool-setting",
     name = prefix.."speed_boost",
     setting_type = "runtime-global",
     default_value = true,
