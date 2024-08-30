@@ -322,19 +322,22 @@ local function build_gui(player_index)
 
     do --crafting timer, position & teleport
         local crafting_flow = main_table.add{ type = "flow", direction = "vertical", name = "crafting_flow" }
-        crafting_flow.add{ type = "label", style = "caption_label", caption = "Handcrafting time", }
+        --crafting_flow.add{ type = "label", style = "caption_label", caption = "TAS State", }
         local crafting_display_flow = crafting_flow.add{ type = "flow", direction = "horizontal", name = "crafting_display_flow" }
+            crafting_display_flow.add{ type = "label", style = "caption_label", caption = "Handcrafting: ", }
             crafting_display_flow.add{ type = "empty-widget", style = "t_tas_helper_horizontal_space", }
             refs.crafting_timer = crafting_display_flow.add{ type = "label", caption = "[0 , 0]", name = "crafting_timer", tooltip = {"gui-tooltip.crafting-timer"} }
         local walking_display_flow = crafting_flow.add{ type = "flow", direction = "horizontal", name = "walking_display_flow" }
+            walking_display_flow.add{ type = "label", style = "caption_label", caption = "Walk target: ", }
             walking_display_flow.add{ type = "empty-widget", style = "t_tas_helper_horizontal_space", }
-            refs.walking_timer = walking_display_flow.add{ type = "label", caption = "nnn", name = "walking_timer", tooltip = {"gui-tooltip.walking-timer"} }
+            refs.walking_timer = walking_display_flow.add{ type = "label", caption = "[ 0 , 0] in [ 0]", name = "walking_timer", tooltip = {"gui-tooltip.walking-timer"} }
+
+        local display_flow_pos = crafting_flow.add{ type = "flow", direction = "horizontal" }
+            display_flow_pos.add{ type = "label", style = "caption_label", caption = "Position: ", }
+            display_flow_pos.add{ type = "empty-widget", style = "t_tas_helper_horizontal_space", }
+            refs.current_position = display_flow_pos.add{ type = "label", caption = "[ 0, 0]", tooltip = {"gui-tooltip.position"} }
 
         local flow = main_table.add{ type = "flow", direction = "vertical" }
-        flow.add{ type = "label", style = "caption_label", caption = "Position", }
-        local display_flow_pos = flow.add{ type = "flow", direction = "horizontal" }
-        display_flow_pos.add{ type = "empty-widget", style = "t_tas_helper_horizontal_space", }
-        refs.current_position = display_flow_pos.add{ type = "label", caption = "[0 , 0]" }
         refs.teleport_flow = flow
         local display_flow = flow.add{ type = "flow", direction = "horizontal" }
         display_flow.add{ type = "label", style = "caption_label", caption = {"t-tas-helper.teleport"}, }
@@ -361,7 +364,7 @@ local function do_update(player_index)
     local refs = global.player_info[player_index].refs
     local player = game.players[player_index]
     local position = player.position
-    refs.current_position.caption = string.format("[ %.2f, %.2f ]", position.x, position.y)
+    refs.current_position.caption = string.format("[ %.2f, %.2f]", position.x, position.y)
 
     if player.controller_type == defines.controllers.character then
         if not player.crafting_queue then
@@ -809,11 +812,14 @@ script.on_event(defines.events.on_tick, function(event)
 
     do
         local refs = global.player_info[player.index].refs
-        global.walk_target = global.walk_target or {0, 0}
+        global.walk_target = global.walk_target or {x=0, y=0}
+        local target_text_x, target_text_y= global.walk_target.x>0 and "[ %.1f," or "[%.1f,", global.walk_target.y>0 and " %.1f]" or "%.1f]"
+        local target = string.format(target_text_x..target_text_y, --Complicated way of making the text not jump around too much
+            global.walk_target.x, global.walk_target.y)
         if player.character.walking_state.walking then
-            refs.walking_timer.caption = math.ceil( util.distance(player.position, global.walk_target) / 0.15 )
+            refs.walking_timer.caption = {"gui-caption.walk-target", target, math.ceil( util.distance(player.position, global.walk_target) / 0.15 )}
         else
-            refs.walking_timer.caption = 0
+            refs.walking_timer.caption = {"gui-caption.walk-target", target, 0}
         end
     end
 

@@ -1,9 +1,12 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.0
 Date: 2024-08-30
-  Changes:
+  Major Features:
     - Added walking timer to the GUI. Showing an estimate of the amount of ticks left to reach the current TAS walking target. This requires FTG version 0.6.0 or higher.
     - Added separate walk target highlighting box. Helping to visualize that the TAS character is moving in one direction and interacting with the environment in another. This requires FTG version 0.6.0 or higher.
+  Minor Features:
+    - Moved the position indicator up in the GUI.
+    - Added tooltip to the position indicator.
 ---------------------------------------------------------------------------------------------------
 Version: 1.1.4
 Date: 2024-08-01
