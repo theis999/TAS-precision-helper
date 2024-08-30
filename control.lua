@@ -324,8 +324,11 @@ local function build_gui(player_index)
         local crafting_flow = main_table.add{ type = "flow", direction = "vertical", name = "crafting_flow" }
         crafting_flow.add{ type = "label", style = "caption_label", caption = "Handcrafting time", }
         local crafting_display_flow = crafting_flow.add{ type = "flow", direction = "horizontal", name = "crafting_display_flow" }
-        crafting_display_flow.add{ type = "empty-widget", style = "t_tas_helper_horizontal_space", }
-        refs.crafting_timer = crafting_display_flow.add{ type = "label", caption = "[0 , 0]", name = "crafting_timer", tooltip = {"gui-tooltip.crafting-timer"} }
+            crafting_display_flow.add{ type = "empty-widget", style = "t_tas_helper_horizontal_space", }
+            refs.crafting_timer = crafting_display_flow.add{ type = "label", caption = "[0 , 0]", name = "crafting_timer", tooltip = {"gui-tooltip.crafting-timer"} }
+        local walking_display_flow = crafting_flow.add{ type = "flow", direction = "horizontal", name = "walking_display_flow" }
+            walking_display_flow.add{ type = "empty-widget", style = "t_tas_helper_horizontal_space", }
+            refs.walking_timer = walking_display_flow.add{ type = "label", caption = "nnn", name = "walking_timer", tooltip = {"gui-tooltip.walking-timer"} }
 
         local flow = main_table.add{ type = "flow", direction = "vertical" }
         flow.add{ type = "label", style = "caption_label", caption = "Position", }
@@ -575,7 +578,9 @@ local function handle_scroll(player_index, to_step)
         tasks = global.player_info[player_index].refs.tasks
     end
     local step = step_list[to_step]
-    if step and step[3] and type(step[3]) == "table" and step[3][1] and step[3][2] then
+    if step[2] == "walk" then
+        --ignore walking steps for setting the target highlighting box
+    elseif step and step[3] and type(step[3]) == "table" and step[3][1] and step[3][2] then
         local x, y = step[3][1], step[3][2]
         if global.current_highlight_box then global.current_highlight_box.destroy{} end
         local highlight_box = game.surfaces[1].create_entity{
@@ -607,6 +612,21 @@ local function handle_state_change(data)
                 player_info.refs.release_button.tooltip = data.is_running and "release" or "resume"
             end
         end
+    end
+end
+
+local function handle_walk_target_change(data)
+    if data and data.target then
+        local x, y = data.target.x, data.target.y
+        if global.current_walk_highlight_box then global.current_walk_highlight_box.destroy{} end
+        local highlight_box = game.surfaces[1].create_entity{
+            name = "highlight-box",
+            position = {0, 0}, -- ignored
+            bounding_box = {{x-0.4,y-0.4},{x+0.4,y+0.4}},
+            box_type = "electricity"
+        }
+        global.current_walk_highlight_box = highlight_box
+        global.walk_target = data.target
     end
 end
 
@@ -642,6 +662,12 @@ local function setup_tasklist()
             remote.call("DunRaider-TAS", "get_tas_step_change_id"),
             handle_task_change
         )
+        if interface.get_tas_walk_target_change_id then
+            script.on_event(
+                remote.call("DunRaider-TAS", "get_tas_walk_target_change_id"),
+                handle_walk_target_change
+            )
+        end
         if interface.get_tas_state_change_id then
             script.on_event(
             remote.call("DunRaider-TAS", "get_tas_state_change_id"),
@@ -781,9 +807,18 @@ script.on_event(defines.events.on_tick, function(event)
         end
     end
 
+    do
+        local refs = global.player_info[player.index].refs
+        global.walk_target = global.walk_target or {0, 0}
+        if player.character.walking_state.walking then
+            refs.walking_timer.caption = math.ceil( util.distance(player.position, global.walk_target) / 0.15 )
+        else
+            refs.walking_timer.caption = 0
+        end
+    end
+
     update_speed_boost()
     draw_reachable_entities() -- <- has it's own entity list 
-    local refs = global.player_info[player.index].refs.settings
 end)
 
 script.on_event(defines.events.on_player_mined_entity, function(event)
@@ -964,11 +999,11 @@ local function select_task(event)
         type == "build" or
         type == "drop" or
         type == "limit" or type == "filter" or type == "priority" or type == "launch" or type == "recipe" or
-        type == "rotate" or type == "counter-rotate" or 
+        type == "rotate" or type == "counter-rotate" or
         type == "shoot"
     then
         local x,y,surface = step[3][1], step[3][2], game.surfaces[1]
-        global.select_task_highlight_boxes = {--TODO convert to highlight box
+        global.select_task_highlight_boxes = {
             surface.create_entity{
                 name = "highlight-box",
                 position = {0, 0}, -- ignored
