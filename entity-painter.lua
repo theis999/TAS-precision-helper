@@ -10,21 +10,21 @@ local tick = 0
 local function set_color(node_corner, new_color)
     if node_corner.color ~= new_color then
         node_corner.color = new_color
-        rendering.set_color(node_corner.id, new_color)
+        node_corner.id.color = new_color
     end
 end
 
 local function set_text(node_corner, new_text)
     if node_corner.text ~= new_text then
         node_corner.text = new_text
-        rendering.set_text(node_corner.id, new_text)
+        node_corner.id.text = new_text
     end
 end
 
 function painter.destroy_node(node)
     local function destroy_corner(node_corner)
         if node_corner then
-            rendering.destroy(node_corner.id)
+            node_corner.id.destroy()
         end
     end
     
@@ -51,7 +51,7 @@ function painter.PaintOutput(node)
     local inventory = node.inventory
     if inventory and #inventory > 0 then
         for _, stack in pairs(inventory.get_contents()) do
-            count = count + stack
+            count = count + stack.count
         end
     end
 
@@ -112,8 +112,8 @@ function painter.PaintLab(node)
     if not researching_speed then researching_speed = entity.prototype.researching_speed end
 
     local time = count * research_unit_energy / researching_speed
-    local text = time <= global.settings.lab_yellow_swap and math.floor(time) or math.floor(time/60)
-    local color = time > global.settings.lab_yellow_swap and WHITE or time <= global.settings.lab_red_swap and RED or YELLOW
+    local text = time <= storage.settings.lab_yellow_swap and math.floor(time) or math.floor(time/60)
+    local color = time > storage.settings.lab_yellow_swap and WHITE or time <= storage.settings.lab_red_swap and RED or YELLOW
 
     if not node.bottom_left then
         node.bottom_left = {
@@ -178,10 +178,10 @@ function painter.PaintCraftable(node)
         ((1-entity.crafting_progress + count) * recipe.energy / entity.crafting_speed)
 
     local time_60 = time * 60
-    local color = time_60 <= global.settings.crafting_red_swap and RED or
-        time_60 <= global.settings.crafting_yellow_swap and YELLOW or
+    local color = time_60 <= storage.settings.crafting_red_swap and RED or
+        time_60 <= storage.settings.crafting_yellow_swap and YELLOW or
         WHITE
-    local text = time_60 <= global.settings.crafting_yellow_swap and math.floor(time_60) or math.floor(time)
+    local text = time_60 <= storage.settings.crafting_yellow_swap and math.floor(time_60) or math.floor(time)
 
     if not node.bottom_left then
         node.bottom_left = {
@@ -279,12 +279,12 @@ function painter.PaintBurn(node)
 
     local fuel_remain = 0
 
-    for stack, count in pairs(fuel.get_contents()) do
-        global.fuel_value[stack] = global.fuel_value[stack] or game.item_prototypes[stack].fuel_value
-        fuel_remain = fuel_remain + global.fuel_value[stack] * count
+    for id, stack in pairs(fuel.get_contents()) do
+        storage.fuel_value[stack.name] = storage.fuel_value[stack.name] or prototypes.item[stack.name].fuel_value
+        fuel_remain = fuel_remain + storage.fuel_value[stack.name] * stack.count
     end
 
-    node.energy_usage = node.energy_usage or (entity.prototype.max_energy_usage or entity.prototype.energy_usage)
+    node.energy_usage = node.energy_usage or (entity.prototype.get_max_energy_usage() or entity.prototype.energy_usage)
     local remaining_burning_fuel = entity.burner.remaining_burning_fuel
     remaining_burning_fuel = remaining_burning_fuel + fuel_remain
     remaining_burning_fuel = remaining_burning_fuel / node.energy_usage
@@ -295,9 +295,9 @@ function painter.PaintBurn(node)
     )]]
 
     local burner_time_sec = burner_time_raw / 60
-    local use_tick = burner_time_raw <= global.settings.burn_yellow_swap
+    local use_tick = burner_time_raw <= storage.settings.burn_yellow_swap
     local burner_time = math.floor(use_tick and burner_time_raw or burner_time_sec)
-    local color = burner_time_raw <= global.settings.burn_red_swap and RED or
+    local color = burner_time_raw <= storage.settings.burn_red_swap and RED or
         use_tick and YELLOW or
         WHITE
 
@@ -320,8 +320,8 @@ function painter.PaintBurn(node)
 end
 
 function painter.PaintCycle(node)
-    if node.is_furnace and not global.settings.cycle_furnace or
-        node.is_miner and not global.settings.cycle_miner
+    if node.is_furnace and not storage.settings.cycle_furnace or
+        node.is_miner and not storage.settings.cycle_miner
     then
         return
     end
@@ -383,74 +383,74 @@ function painter.PaintCycle(node)
 end
 
 function painter.refresh()
-    global.burner_nodes = global.burner_nodes or {}
-    global.lab_nodes = global.lab_nodes or {}
-    global.craftable_nodes = global.craftable_nodes or {}
-    global.cycle_nodes = global.cycle_nodes or {}
-    global.output_nodes = global.output_nodes or {}
-    global.furnace_craftable_nodes = global.furnace_craftable_nodes or {}
+    storage.burner_nodes = storage.burner_nodes or {}
+    storage.lab_nodes = storage.lab_nodes or {}
+    storage.craftable_nodes = storage.craftable_nodes or {}
+    storage.cycle_nodes = storage.cycle_nodes or {}
+    storage.output_nodes = storage.output_nodes or {}
+    storage.furnace_craftable_nodes = storage.furnace_craftable_nodes or {}
 
     tick = game and game.tick or 0
 
-    if global.settings.cycle then
-        for index, node in pairs(global.cycle_nodes) do
+    if storage.settings.cycle then
+        for index, node in pairs(storage.cycle_nodes) do
             if not node.entity or (not node.entity.valid) then
                 painter.destroy_node(node)
-                global.cycle_nodes[index] = nil
+                storage.cycle_nodes[index] = nil
             else
                 painter.PaintCycle(node)
             end
         end
     end
-    if global.settings.crafting then
-        for index, node in pairs(global.craftable_nodes) do
+    if storage.settings.crafting then
+        for index, node in pairs(storage.craftable_nodes) do
             if not node.entity or (not node.entity.valid) then
                 painter.destroy_node(node)
-                global.craftable_nodes[index] = nil
+                storage.craftable_nodes[index] = nil
             else
                 painter.PaintCraftable(node)
             end
         end
     end
-    if global.settings.burn then
-        global.fuel_value = global.fuel_value or {}
-        for index, node in pairs(global.burner_nodes) do
+    if storage.settings.burn then
+        storage.fuel_value = storage.fuel_value or {}
+        for index, node in pairs(storage.burner_nodes) do
             if not node.entity or (not node.entity.valid) then
                 painter.destroy_node(node)
-                global.burner_nodes[index] = nil
+                storage.burner_nodes[index] = nil
             else
                 painter.PaintBurn(node)
             end
         end
     end
-    if global.settings.lab then
+    if storage.settings.lab then
         research = game.forces["player"].current_research
         research_ingredients = research and research.research_unit_ingredients or nil
         research_unit_energy = research and research.research_unit_energy or nil
-        for index, node in pairs(global.lab_nodes) do
+        for index, node in pairs(storage.lab_nodes) do
             if not node.entity or (not node.entity.valid) then
                 painter.destroy_node(node)
-                global.lab_nodes[index] = nil
+                storage.lab_nodes[index] = nil
             else
                 painter.PaintLab(node)
             end
         end
     end
-    if global.settings.output then
-        for index, node in pairs(global.output_nodes) do
+    if storage.settings.output then
+        for index, node in pairs(storage.output_nodes) do
             if not node.entity or (not node.entity.valid) then
                 painter.destroy_node(node)
-                global.output_nodes[index] = nil
+                storage.output_nodes[index] = nil
             else
                 painter.PaintOutput(node)
             end
         end
     end
-    if global.settings.furnace_craftable then
-        for index, node in pairs(global.furnace_craftable_nodes) do
+    if storage.settings.furnace_craftable then
+        for index, node in pairs(storage.furnace_craftable_nodes) do
             if not node.entity or (not node.entity.valid) then
                 painter.destroy_node(node)
-                global.furnace_craftable_nodes[index] = nil
+                storage.furnace_craftable_nodes[index] = nil
             else
                 painter.PaintFurnaceCraftable(node)
             end
@@ -460,49 +460,49 @@ end
 
 ---Clears the paint on each entity on settings toggled
 function painter.ClearPaint()
-    if not global.settings.cycle or not global.settings.cycle_furnace or not global.settings.cycle_miner then
-        for _, node in pairs(global.cycle_nodes) do
-            if not global.settings.cycle or
-                node.is_furnace and not global.settings.cycle_furnace or
-                node.is_miner and not global.settings.cycle_miner
+    if not storage.settings.cycle or not storage.settings.cycle_furnace or not storage.settings.cycle_miner then
+        for _, node in pairs(storage.cycle_nodes) do
+            if not storage.settings.cycle or
+                node.is_furnace and not storage.settings.cycle_furnace or
+                node.is_miner and not storage.settings.cycle_miner
             then
                 if node.top_left then rendering.destroy(node.top_left.id) end
                 node.top_left = nil
             end
         end
     end
-    if not global.settings.crafting then
-        for _, node in pairs(global.craftable_nodes) do
+    if not storage.settings.crafting then
+        for _, node in pairs(storage.craftable_nodes) do
             if node.bottom_left then rendering.destroy(node.bottom_left.id) end
             if node.top_right then rendering.destroy(node.top_right.id) end
             node.bottom_left = nil
             node.top_right = nil
         end
     end
-    if not global.settings.burn then
-        for _, node in pairs(global.burner_nodes) do
+    if not storage.settings.burn then
+        for _, node in pairs(storage.burner_nodes) do
             if node.bottom_left then rendering.destroy(node.bottom_left.id) end
             node.bottom_left = nil
         end
     end
-    if not global.settings.lab then
-        for _, node in pairs(global.lab_nodes) do
+    if not storage.settings.lab then
+        for _, node in pairs(storage.lab_nodes) do
             if node.bottom_left then rendering.destroy(node.bottom_left.id) end
             if node.top_right then rendering.destroy(node.top_right.id) end
             node.bottom_left = nil
             node.top_right = nil
         end
     end
-    if not global.settings.output then
-        for _, node in pairs(global.output_nodes) do
+    if not storage.settings.output then
+        for _, node in pairs(storage.output_nodes) do
             if node.bottom_right then
                 rendering.destroy(node.bottom_right.id)
             end
             node.bottom_right = nil
         end
     end
-    if not global.settings.furnace_craftable then
-        for _, node in pairs(global.furnace_craftable_nodes) do
+    if not storage.settings.furnace_craftable then
+        for _, node in pairs(storage.furnace_craftable_nodes) do
             if node.top_right then rendering.destroy(node.top_right.id) end
             node.top_right = nil
         end
@@ -525,34 +525,34 @@ local function EntityBuilt(data)
         is_miner = entity.type == "mining-drill",
     }
 
-    global.burner_nodes = global.burner_nodes or {}
-    global.lab_nodes = global.lab_nodes or {}
-    global.craftable_nodes = global.craftable_nodes or {}
-    global.cycle_nodes = global.cycle_nodes or {}
-    global.output_nodes = global.output_nodes or {}
-    global.furnace_craftable_nodes = global.furnace_craftable_nodes or {}
+    storage.burner_nodes = storage.burner_nodes or {}
+    storage.lab_nodes = storage.lab_nodes or {}
+    storage.craftable_nodes = storage.craftable_nodes or {}
+    storage.cycle_nodes = storage.cycle_nodes or {}
+    storage.output_nodes = storage.output_nodes or {}
+    storage.furnace_craftable_nodes = storage.furnace_craftable_nodes or {}
 
     if node.is_burner then
-        global.burner_nodes[entity.unit_number] = node
+        storage.burner_nodes[entity.unit_number] = node
     end
     if node.is_lab then
-        global.lab_nodes[entity.unit_number] = node
+        storage.lab_nodes[entity.unit_number] = node
     end
     if node.is_crafter then
-        global.craftable_nodes[entity.unit_number] = node
+        storage.craftable_nodes[entity.unit_number] = node
     end
     if node.is_crafter or node.is_furnace or node.is_miner then
-        global.cycle_nodes[entity.unit_number] = node
+        storage.cycle_nodes[entity.unit_number] = node
     end
     if node.is_crafter or node.is_furnace or node.is_chest then
-        global.output_nodes[entity.unit_number] = node
+        storage.output_nodes[entity.unit_number] = node
     end
     if node.is_furnace then
-        global.furnace_craftable_nodes[entity.unit_number] = node
+        storage.furnace_craftable_nodes[entity.unit_number] = node
     end
 end
 
----Inits the painter by filtering and adding all entities to the global state
+---Inits the painter by filtering and adding all entities to the storage state
 function painter.init()
     local entities = game.surfaces[1].find_entities_filtered{
         force = game.forces["player"]
