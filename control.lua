@@ -133,7 +133,7 @@ local function draw_reachable_entities()
     if not storage.player_info[1].refs.settings.reachable.state then return end
     local entities = player.surface.find_entities_filtered{
         position = player.position,
-        radius = player.reach_distance + storage.settings.range,
+        radius = player.controller_type == defines.controllers.remote and 10 or player.reach_distance + storage.settings.range,
         force = player.force
     }
     for i in pairs(entities) do
@@ -152,7 +152,7 @@ local function draw_reachable_entities()
 
     entities = player.surface.find_entities_filtered{
         position = player.position,
-        radius = player.resource_reach_distance + storage.settings.range,
+        radius = player.controller_type == defines.controllers.remote and 2 or player.resource_reach_distance + storage.settings.range,
         force = player.force,
         name = "highlight-box",
         invert = true,
@@ -185,7 +185,7 @@ local function build_gui(player_index)
     }
     local refs = storage.player_info[player_index].refs
 
-    local main_frame = screen.add{ type = "frame", direction = "vertical", }
+    local main_frame = screen.add{ type = "frame", direction = "vertical", width = gui_width, }
     main_frame.location = {x = settings.global[settings_prefix.."x"].value, y = settings.global[settings_prefix.."y"].value}
     main_frame.style.width = gui_width
     refs.main_frame = main_frame
@@ -324,11 +324,11 @@ local function build_gui(player_index)
         local crafting_flow = main_table.add{ type = "flow", direction = "vertical", name = "crafting_flow" }
         --crafting_flow.add{ type = "label", style = "caption_label", caption = "TAS State", }
         local crafting_display_flow = crafting_flow.add{ type = "flow", direction = "horizontal", name = "crafting_display_flow" }
-            crafting_display_flow.add{ type = "label", style = "caption_label", caption = "Handcrafting: ", }
+            crafting_display_flow.add{ type = "label", style = "caption_label", caption = "Crafting: ", }
             crafting_display_flow.add{ type = "empty-widget", style = "t_tas_helper_horizontal_space", }
             refs.crafting_timer = crafting_display_flow.add{ type = "label", caption = "[0 , 0]", name = "crafting_timer", tooltip = {"gui-tooltip.crafting-timer"} }
         local walking_display_flow = crafting_flow.add{ type = "flow", direction = "horizontal", name = "walking_display_flow" }
-            walking_display_flow.add{ type = "label", style = "caption_label", caption = "Walk target: ", }
+            walking_display_flow.add{ type = "label", style = "caption_label", caption = "Walk: ", }
             walking_display_flow.add{ type = "empty-widget", style = "t_tas_helper_horizontal_space", }
             refs.walking_timer = walking_display_flow.add{ type = "label", caption = "[ 0 , 0] in [ 0]", name = "walking_timer", tooltip = {"gui-tooltip.walking-timer"} }
 
@@ -483,19 +483,6 @@ local function format_name(str)
     return str:gsub("^%l", string.upper):gsub("-", " ")
 end
 
-local function format_walk_direction(step)
-    local same_x = step[5] or false
-    local same_y = step[6] or false
-
-    if same_x ~= same_y then
-        return same_x == "same_x" and "↕ " or "↔ "
-    elseif same_x and same_y then
-        return "↗ "
-    else
-        return ""
-    end
-end
-
 ---Converts one entry in steps_ into a string for tasklist -> [task-number]: Taskname taskdetail
 ---@param step table
 ---@return string|table step_line
@@ -505,13 +492,13 @@ local function step_to_string(step)
     if not n then return "" end
     local description
     if n == "walk" then
-        description = {"tas-step.description_walk", position_to_string({x=step[3][1], y=step[3][2]}), format_walk_direction(step)}
+        description = {"tas-step.description_walk", position_to_string({x=step[3][1], y=step[3][2]})}
     elseif n == "put" or n == "take" then
         description = {"tas-step.description_"..n, amount(step[5]), step[4], position_to_string({x=step[3][1], y=step[3][2]})}
     elseif n == "craft" then
         description = {"tas-step.description_craft", amount(step[3]), step[4]}
     elseif n == "build" then
-        return {"tas-step.description_step", step[1][1], {"tas-step.description_build", step[4], position_to_string({x=step[3][1], y=step[3][2]})}}
+        return {"tas-step.description_step", step[1], {"tas-step.description_build", step[4], position_to_string({x=step[3][1], y=step[3][2]})}}
     elseif n == "mine" then
         description = {"tas-step.description_mine", position_to_string({x=step[3][1], y=step[3][2]}), duration(step[4])}
     elseif n == "recipe" then
@@ -551,7 +538,7 @@ local function step_to_string(step)
     else
         description = {"tas-step.description_misc", format_name(n), ""}
     end
-    return {"tas-step.description_step", step[1][1], description}
+    return {"tas-step.description_step", step[1], description}
 end
 
 ---comment

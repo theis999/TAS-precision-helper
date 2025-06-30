@@ -357,7 +357,7 @@ function painter.PaintCycle(node)
 
     if node.recipe == nil then
         if node.top_left then
-            rendering.destroy(node.top_left.id)
+            node.top_left.id.destroy()
             node.top_left = nil
         end
         return
@@ -466,29 +466,29 @@ function painter.ClearPaint()
                 node.is_furnace and not storage.settings.cycle_furnace or
                 node.is_miner and not storage.settings.cycle_miner
             then
-                if node.top_left then rendering.destroy(node.top_left.id) end
+                if node.top_left then node.top_left.id.destroy() end
                 node.top_left = nil
             end
         end
     end
     if not storage.settings.crafting then
         for _, node in pairs(storage.craftable_nodes) do
-            if node.bottom_left then rendering.destroy(node.bottom_left.id) end
-            if node.top_right then rendering.destroy(node.top_right.id) end
+            if node.bottom_left then node.bottom_left.id.destroy() end
+            if node.top_right then node.top_right.id.destroy() end
             node.bottom_left = nil
             node.top_right = nil
         end
     end
     if not storage.settings.burn then
         for _, node in pairs(storage.burner_nodes) do
-            if node.bottom_left then rendering.destroy(node.bottom_left.id) end
+            if node.bottom_left then node.bottom_left.id.destroy() end
             node.bottom_left = nil
         end
     end
     if not storage.settings.lab then
         for _, node in pairs(storage.lab_nodes) do
-            if node.bottom_left then rendering.destroy(node.bottom_left.id) end
-            if node.top_right then rendering.destroy(node.top_right.id) end
+            if node.bottom_left then node.bottom_left.id.destroy() end
+            if node.top_right then node.top_right.id.destroy() end
             node.bottom_left = nil
             node.top_right = nil
         end
@@ -496,14 +496,14 @@ function painter.ClearPaint()
     if not storage.settings.output then
         for _, node in pairs(storage.output_nodes) do
             if node.bottom_right then
-                rendering.destroy(node.bottom_right.id)
+                node.bottom_right.id.destroy()
             end
             node.bottom_right = nil
         end
     end
     if not storage.settings.furnace_craftable then
         for _, node in pairs(storage.furnace_craftable_nodes) do
-            if node.top_right then rendering.destroy(node.top_right.id) end
+            if node.top_right then node.top_right.id.destroy() end
             node.top_right = nil
         end
     end
@@ -512,7 +512,7 @@ end
 ---comment
 ---@param data EventData.on_built_entity | EventData.on_robot_built_entity | EventData.script_raised_built
 local function EntityBuilt(data)
-    local entity = data.created_entity or data.entity or nil
+    local entity = data.entity or nil
     if not entity and entity.type == "entity-ghost" then return end
 
     local node = {
